@@ -1,0 +1,58 @@
+"""
+Pydantic Settings — Centralized configuration management.
+
+All settings are loaded from .env file and can be overridden via environment variables.
+Uses @lru_cache for singleton pattern to avoid re-reading .env on every access.
+"""
+
+from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Application-wide configuration loaded from environment variables."""
+
+    # --- LLM Runtime ---
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "llama3"
+
+    # --- LLM Fallback ---
+    GROQ_API_KEY: str = ""
+    OPENAI_API_KEY: str = ""
+
+    # --- Embedding ---
+    EMBEDDING_MODEL: str = "BAAI/bge-m3"
+
+    # --- Vector Database ---
+    CHROMA_PERSIST_DIR: str = "./data/vector_db"
+    CHROMA_COLLECTION: str = "documents"
+
+    # --- RAG Pipeline ---
+    CHUNK_SIZE: int = 512
+    CHUNK_OVERLAP: int = 50
+    TOP_K: int = 5
+
+    # --- Re-ranker ---
+    RERANKER_MODEL: str = "BAAI/bge-reranker-v2-m3"
+    RERANKER_TOP_N: int = 3
+
+    # --- API Server ---
+    API_HOST: str = "0.0.0.0"
+    API_PORT: int = 8000
+
+    # --- Logging ---
+    LOG_LEVEL: str = "INFO"
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore",
+    )
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    """Singleton factory for Settings. Cached after first call."""
+    return Settings()
