@@ -36,8 +36,24 @@ def load_pdf(file_path: str | Path) -> list[Document]:
     Raises:
         DocumentError: If the file cannot be loaded.
     """
-    # TODO: Implement in Sprint 1, Day 2
-    raise NotImplementedError("PDF loading will be implemented in Day 2")
+    try:
+        from langchain_community.document_loaders import PyPDFLoader
+        
+        path_str = str(file_path)
+        path_obj = Path(path_str)
+        
+        if not path_obj.exists() or not path_obj.is_file():
+            raise FileNotFoundError(f"File not found: {path_str}")
+
+        logger.info(f"Loading PDF file: {path_str}")
+        loader = PyPDFLoader(path_str)
+        docs = loader.load()
+        logger.info(f"Successfully loaded {len(docs)} pages from {path_str}")
+        
+        return docs
+    except Exception as e:
+        logger.error(f"Failed to load PDF: {e}")
+        raise DocumentError(f"Cannot load PDF file '{file_path}': {e}") from e
 
 
 def chunk_documents(
@@ -59,5 +75,46 @@ def chunk_documents(
     Returns:
         List of chunked Document objects with preserved metadata.
     """
-    # TODO: Implement in Sprint 1, Day 2
-    raise NotImplementedError("Chunking will be implemented in Day 2")
+    try:
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
+        
+        settings = get_settings()
+        final_chunk_size = chunk_size if chunk_size is not None else settings.CHUNK_SIZE
+        final_overlap = overlap if overlap is not None else settings.CHUNK_OVERLAP
+        
+        logger.info(f"Chunking {len(docs)} documents with size={final_chunk_size}, overlap={final_overlap}")
+        
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=final_chunk_size,
+            chunk_overlap=final_overlap,
+            length_function=len,
+        )
+        
+        # split_documents automatically propagates the metadata from the parent docs to the chunks
+        chunked_docs = text_splitter.split_documents(docs)
+        logger.info(f"Successfully generated {len(chunked_docs)} chunks from {len(docs)} pages.")
+        
+        return chunked_docs
+    except Exception as e:
+        logger.error(f"Failed to chunk documents: {e}")
+        raise DocumentError(f"Error during chunking: {e}") from e
+
+
+if __name__ == "__main__":
+    try:
+        logger = get_logger(__name__)
+        docs = load_pdf("data/raw_pdfs/example.pdf")
+        
+        chunks = chunk_documents(docs)
+        
+        logger.info(f"Loaded {len(docs)} pages.")
+        logger.info(f"Chunked into {len(chunks)} smaller pieces.")
+        
+        # In ra thử chunk đầu tiên để kiểm tra metadata
+        if chunks:
+            logger.info("Sample First Chunk:")
+            logger.info(f"Metadata: {chunks[0].metadata}")
+            logger.info(f"Content snippet: {chunks[0].page_content[:200]}...")
+            
+    except DocumentError as e:
+        logger.error(f"Document error: {e}")
