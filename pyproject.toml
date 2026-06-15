@@ -38,6 +38,7 @@ dependencies = [
     "streamlit>=1.38.0",
     "requests>=2.32.0",
     "langchain-huggingface>=1.2.2",
+    "langchain-chroma>=1.1.0",
 ]
 
 [project.optional-dependencies]
