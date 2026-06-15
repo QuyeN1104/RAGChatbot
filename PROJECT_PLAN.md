@@ -143,7 +143,7 @@ agentic-rag-project/
 ### 5.1 Ingestion Flow (Upload → Vector DB)
 
 ```
-User Upload PDF
+User Upload PDF`    
       │
       ▼
 ┌─────────────┐    ┌──────────────┐    ┌─────────────┐

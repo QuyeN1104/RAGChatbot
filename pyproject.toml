@@ -54,9 +54,9 @@ dev = [
     "mypy>=1.11.0",
 ]
 finetune = [
-    "unsloth[colab]>=2024.9",
-    "trl>=0.11.0",
-    "datasets>=3.0.0",
+    # "unsloth[colab]>=2024.9",
+    # "trl>=0.11.0",
+    # "datasets>=3.0.0",
 ]
 eval = [
     "ragas>=0.2.0",

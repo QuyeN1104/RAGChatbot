@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Iterator, Protocol, runtime_checkable
 
+from langchain_core.output_parsers import StrOutputParser
+
 from src.core.config import get_settings
 from src.core.exceptions import LLMConnectionError
 from src.core.logger import get_logger
@@ -29,12 +31,13 @@ class LLMProvider(Protocol):
         """Send a prompt and return the complete response."""
         ...
 
+
     def stream(self, prompt: str) -> Iterator[str]:
         """Send a prompt and stream response chunks."""
         ...
 
 
-def create_llm_client(provider: str = "ollama") -> LLMProvider:
+def create_llm_client(provider: str = "ollama") :
     """
     Factory function to create an LLM client.
 
@@ -60,12 +63,8 @@ def create_llm_client(provider: str = "ollama") -> LLMProvider:
                     model=settings.OLLAMA_MODEL,
                     temperature=0.1,
                 )
-                logger.info(
-                    "Ollama client created",
-                    model=settings.OLLAMA_MODEL,
-                    base_url=settings.OLLAMA_BASE_URL,
-                )
-                return llm  # type: ignore[return-value]
+                logger.info("Ollama client created")
+                return llm | StrOutputParser()
             except Exception as e:
                 raise LLMConnectionError(f"Failed to connect to Ollama: {e}") from e
 
@@ -81,7 +80,7 @@ def create_llm_client(provider: str = "ollama") -> LLMProvider:
                     temperature=0.1,
                 )
                 logger.info("Groq client created")
-                return llm  # type: ignore[return-value]
+                return llm | StrOutputParser()
             except Exception as e:
                 raise LLMConnectionError(f"Failed to connect to Groq: {e}") from e
 
@@ -97,7 +96,7 @@ def create_llm_client(provider: str = "ollama") -> LLMProvider:
                     temperature=0.1,
                 )
                 logger.info("OpenAI client created")
-                return llm  # type: ignore[return-value]
+                return llm | StrOutputParser()
             except Exception as e:
                 raise LLMConnectionError(f"Failed to connect to OpenAI: {e}") from e
 
@@ -106,3 +105,25 @@ def create_llm_client(provider: str = "ollama") -> LLMProvider:
                 f"Unsupported LLM provider: '{provider}'. "
                 f"Choose from: 'ollama', 'groq', 'openai'"
             )
+
+if __name__ == "__main__":
+    logger = get_logger(__name__)
+
+    # Create an LLM client for testing
+    llm = create_llm_client('ollama')
+
+    # Test invoke method
+    try:
+        response = llm.invoke('Hello! How are you?')
+        logger.info("LLM invoke test:", response=response)
+    except Exception as e:
+        logger.error(f"LLM invoke test failed: {e}")
+
+    # Test stream method
+    try:
+        logger.info("LLM stream test")
+        for chunk in llm.stream('Explain how RAG works in 1 sentence:'):
+            print(chunk, end="", flush=True)
+        print()
+    except Exception as e:
+        logger.error(f"LLM stream test failed: {e}")
