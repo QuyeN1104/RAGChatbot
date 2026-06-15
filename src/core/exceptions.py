@@ -66,3 +66,4 @@ class RoutingError(RAGException):
 
     def __init__(self, message: str = "Routing error"):
         super().__init__(message)
+ 

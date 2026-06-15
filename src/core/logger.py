@@ -38,6 +38,7 @@ def get_logger(name: str) -> logging.Logger:
 
     logger.setLevel(getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO))
 
+    
     handler = RichHandler(
         console=_console,
         show_time=True,
