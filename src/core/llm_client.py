@@ -115,7 +115,7 @@ if __name__ == "__main__":
     # Test invoke method
     try:
         response = llm.invoke('Hello! How are you?')
-        logger.info("LLM invoke test:", response=response)
+        logger.info(f"LLM invoke test: {response}")
     except Exception as e:
         logger.error(f"LLM invoke test failed: {e}")
 
