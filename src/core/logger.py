@@ -33,7 +33,7 @@ def get_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
 
     # Avoid adding duplicate handlers
-    if logger.handlers:
+    if logger.hasHandlers():
         return logger
 
     logger.setLevel(getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO))
