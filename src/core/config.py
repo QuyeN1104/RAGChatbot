@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
 
     # --- Embedding ---
+    HF_TOKEN: str = ""
     EMBEDDING_MODEL: str = "BAAI/bge-m3"
 
     # --- Vector Database ---

@@ -37,6 +37,10 @@ class EmbeddingService:
         """Lazy-loads the HuggingFaceEmbeddings model."""
         if self._embedder is None:
             try:
+                import os
+                if self.settings.HF_TOKEN:
+                    os.environ["HF_TOKEN"] = self.settings.HF_TOKEN
+                    
                 from langchain_huggingface import HuggingFaceEmbeddings
                 logger.info(f"Loading embedding model: {self.model_name}...")
                 self._embedder = HuggingFaceEmbeddings(model_name=self.model_name)
