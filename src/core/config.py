@@ -12,7 +12,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """Application-wide configuration loaded from environment variables."""
-
+    # -- DATA DIRECTORY --
+    DATA_DIR: str = "./data"
     # --- LLM Runtime ---
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3"

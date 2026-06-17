@@ -97,6 +97,37 @@ class VectorStoreManager:
             logger.error(f"Failed to perform similarity search: {e}")
             raise VectorStoreError(f"Error searching vector store: {e}") from e
 
+    def list_documents(self) -> list[str]:
+        """List unique document sources in the vector store."""
+        try:
+            results = self.vector_store.get()
+            if not results or not results.get("metadatas"):
+                return []
+            
+            sources = set()
+            for meta in results["metadatas"]:
+                if meta and "source" in meta:
+                    sources.add(meta["source"])
+            return sorted(list(sources))
+        except Exception as e:
+            logger.error(f"Failed to list documents: {e}")
+            raise VectorStoreError(f"Error listing documents: {e}") from e
+
+    def delete_document(self, source_name: str) -> bool:
+        """Delete all chunks associated with a specific document source."""
+        try:
+            results = self.vector_store.get(where={"source": source_name})
+            ids = results.get("ids", [])
+            if not ids:
+                return False
+            
+            self.vector_store.delete(ids=ids)
+            logger.info(f"Deleted {len(ids)} chunks for document: {source_name}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete document: {e}")
+            raise VectorStoreError(f"Error deleting document: {e}") from e
+
     def delete_collection(self) -> None:
         """Delete the entire collection from the vector store."""
         try:
