@@ -89,7 +89,7 @@ class EmbeddingService:
             raise EmbeddingError(f"Error embedding query: {e}") from e
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     try:
         service = EmbeddingService()
         sample_texts = ["Đây là câu kiểm tra 1.", "Câu kiểm tra số 2."]

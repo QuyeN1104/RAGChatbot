@@ -95,7 +95,7 @@ Answer:"""
         return "Sorry, an error occurred while generating the answer."
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     from langchain_core.documents import Document
 
     from src.core.llm_client import create_llm_client
