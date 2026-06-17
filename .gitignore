@@ -28,6 +28,7 @@ uv.lock
 data/vector_db/
 data/raw_pdfs/*.pdf
 data/dataset/*.jsonl
+data/chat_history.json
 
 # Models
 models/
@@ -52,3 +53,4 @@ htmlcov/
 
 # Jupyter
 .ipynb_checkpoints/
+
