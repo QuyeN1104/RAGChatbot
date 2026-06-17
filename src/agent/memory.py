@@ -7,7 +7,9 @@ using previous context for follow-up questions.
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
+from functools import lru_cache
 
 from src.core.logger import get_logger
 
@@ -17,17 +19,49 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
+class BaseMemoryStore(ABC):
+    """Abstract interface for a conversation memory store."""
+    
+    @abstractmethod
+    def add_message(self, session_id: str, role: str, content: str) -> None:
+        """Add a single message to the session."""
+        pass
+        
+    @abstractmethod
+    def get_messages(self, session_id: str, last_n: int) -> list[dict]:
+        """Get the recent message pairs for a session."""
+        pass
+
+
+class DictMemoryStore(BaseMemoryStore):
+    """In-memory dictionary based storage (Not for production scaling)."""
+    
+    def __init__(self):
+        self._store: dict[str, list[dict]] = {}
+        
+    def add_message(self, session_id: str, role: str, content: str) -> None:
+        if session_id not in self._store:
+            self._store[session_id] = []
+        self._store[session_id].append({"role": role, "content": content})
+        
+    def get_messages(self, session_id: str, last_n: int) -> list[dict]:
+        history = self._store.get(session_id, [])
+        if last_n <= 0:
+            return []
+        return history[-(last_n * 2):]
+
+
 class ConversationMemory:
     """
-    In-memory conversation history manager.
+    Conversation history manager and processor.
 
-    Stores messages per session_id and can reformulate ambiguous
-    follow-up queries using conversation context.
+    Uses an injected memory store to persist messages and handles
+    reformulating ambiguous follow-up queries using conversation context.
     """
 
-    def __init__(self):
-        """Initialize empty conversation store."""
-        self._store: dict[str, list[dict]] = {}
+    def __init__(self, store: BaseMemoryStore):
+        """Initialize with a specific storage backend."""
+        self.store = store
 
     def add(self, user_msg: str, ai_msg: str, session_id: str) -> None:
         """
@@ -38,8 +72,9 @@ class ConversationMemory:
             ai_msg: Assistant's response.
             session_id: Session identifier.
         """
-        # TODO: Implement in Sprint 1, Day 5
-        raise NotImplementedError("Memory add will be implemented in Day 5")
+        self.store.add_message(session_id, "user", user_msg)
+        self.store.add_message(session_id, "assistant", ai_msg)
+        logger.debug(f"Added message pair to session {session_id}")
 
     def get_history(self, session_id: str, last_n: int = 5) -> list[dict]:
         """
@@ -52,8 +87,7 @@ class ConversationMemory:
         Returns:
             List of message dicts [{"role": "user"|"assistant", "content": str}].
         """
-        # TODO: Implement in Sprint 1, Day 5
-        raise NotImplementedError("Memory retrieval will be implemented in Day 5")
+        return self.store.get_messages(session_id, last_n)
 
     def reformulate_query(
         self,
@@ -74,5 +108,63 @@ class ConversationMemory:
         Returns:
             Reformulated query string.
         """
-        # TODO: Implement in Sprint 1, Day 5
-        raise NotImplementedError("Query reformulation will be implemented in Day 5")
+        if not history:
+            return query
+            
+        history_str = "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in history])
+        
+        prompt = f"""Given the following conversation history and a follow-up question, rephrase the follow-up question to be a standalone question, in its original language.
+If the follow-up question contains references like "it", "that", "cái đó", "vậy", "còn", or implicitly refers to a topic in the history, YOU MUST replace them with the explicit subject from the history.
+If the follow-up question is already fully self-contained, return it exactly as is. 
+Do NOT answer the question, only output the reformulated question.
+
+Chat History:
+{history_str}
+
+Follow-up Question: {query}
+Standalone Question:"""
+
+        try:
+            logger.info("Reformulating query based on history...")
+            reformulated = llm.invoke(prompt).strip()
+            
+            if reformulated:
+                logger.info(f"Query reformulated: '{query}' -> '{reformulated}'")
+                return reformulated
+            return query
+        except Exception as e:
+            logger.error(f"Failed to reformulate query: {e}")
+            return query
+
+
+@lru_cache(maxsize=1)
+def get_memory() -> ConversationMemory:
+    """Singleton factory for ConversationMemory. Cached after first call."""
+    # Using the in-memory dictionary store for local development
+    store = DictMemoryStore()
+    return ConversationMemory(store=store)
+
+
+if __name__ == "__main__":
+    from src.core.llm_client import create_llm_client
+
+    logger.info("--- Testing Conversation Memory ---")
+    memory = get_memory()
+    session = "user_123"
+
+    # Add history
+    memory.add("Xin chào", "Chào bạn, tôi có thể giúp gì cho bạn?", session)
+    memory.add("Chính sách nghỉ phép của công ty thế nào?", "Nhân viên có 12 ngày phép một năm.", session)
+
+    history = memory.get_history(session)
+    logger.info(f"Retrieved {len(history)} messages from history.")
+
+    # Test Reformulation
+    try:
+        llm = create_llm_client("ollama")
+        ambiguous_query = "Vậy thực tập sinh thì sao?"
+        
+        standalone_query = memory.reformulate_query(ambiguous_query, history, llm)
+        logger.info(f"Final Query: {standalone_query}")
+    except Exception as e:
+        logger.error(f"Test failed: {e}")
