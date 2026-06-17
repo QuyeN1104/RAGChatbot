@@ -100,7 +100,7 @@ def chunk_documents(
         raise DocumentError(f"Error during chunking: {e}") from e
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     try:
         logger = get_logger(__name__)
         docs = load_pdf("data/raw_pdfs/example.pdf")
