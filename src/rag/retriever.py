@@ -47,9 +47,10 @@ def generate_answer(
     query: str,
     context: list[Document],
     llm: LLMProvider,
+    history: list[dict] = None
 ) -> str:
     """
-    Generate an answer using retrieved context and LLM.
+    Generate an answer using retrieved context, history and LLM.
 
     Assembles a RAG prompt with context documents and sends to LLM.
 
@@ -57,15 +58,19 @@ def generate_answer(
         query: User question.
         context: Retrieved documents as context.
         llm: LLM provider instance.
+        history: Optional list of previous conversation turns.
 
     Returns:
         Generated answer string.
     """
-    prompt_template = """You are a helpful AI assistant. Use the following pieces of retrieved context to answer the user's question.
+    prompt_template = """You are a helpful AI assistant. Use the following pieces of retrieved context and conversation history to answer the user's question.
 If you don't know the answer based on the context, just say that you don't know, don't try to make up an answer.
 
 Context:
 {context}
+
+Conversation History:
+{history_str}
 
 Question: {query}
 
@@ -74,8 +79,13 @@ Answer:"""
     # Combine document contents into a single string
     context_text = "\n\n---\n\n".join([doc.page_content for doc in context])
     
+    # Format history
+    history_str = ""
+    if history:
+        history_str = "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in history])
+    
     # Format the prompt
-    formatted_prompt = prompt_template.format(context=context_text, query=query)
+    formatted_prompt = prompt_template.format(context=context_text, history_str=history_str, query=query)
     
     try:
         logger.info("Generating answer using LLM...")

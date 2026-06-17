@@ -36,18 +36,36 @@ class EmbeddingService:
     def embedder(self):
         """Lazy-loads the HuggingFaceEmbeddings model."""
         if self._embedder is None:
+            import os
+            if self.settings.HF_TOKEN:
+                os.environ["HF_TOKEN"] = self.settings.HF_TOKEN
+                
+            from langchain_huggingface import HuggingFaceEmbeddings
+            logger.info(f"Loading embedding model: {self.model_name}...")
+            
             try:
-                import os
-                if self.settings.HF_TOKEN:
-                    os.environ["HF_TOKEN"] = self.settings.HF_TOKEN
-                    
-                from langchain_huggingface import HuggingFaceEmbeddings
-                logger.info(f"Loading embedding model: {self.model_name}...")
                 self._embedder = HuggingFaceEmbeddings(model_name=self.model_name)
-                logger.info("Embedding model loaded successfully.")
+                logger.info("Embedding model loaded successfully on default device.")
             except Exception as e:
-                logger.error(f"Failed to load embedding model: {e}")
-                raise EmbeddingError(f"Error loading embedding model {self.model_name}: {e}") from e
+                if "CUDA out of memory" in str(e) or "CUDA error" in str(e):
+                    logger.warning(f"GPU OOM detected ({e}). Falling back to CPU...")
+                    try:
+                        import torch
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+                            
+                        self._embedder = HuggingFaceEmbeddings(
+                            model_name=self.model_name, 
+                            model_kwargs={'device': 'cpu'}
+                        )
+                        logger.info("Embedding model loaded successfully on CPU.")
+                    except Exception as fallback_err:
+                        logger.error(f"Fallback to CPU failed: {fallback_err}")
+                        raise EmbeddingError(f"Error loading {self.model_name}: {fallback_err}") from fallback_err
+                else:
+                    logger.error(f"Failed to load embedding model: {e}")
+                    raise EmbeddingError(f"Error loading embedding model {self.model_name}: {e}") from e
+                    
         return self._embedder
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:

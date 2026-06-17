@@ -7,6 +7,9 @@ using previous context for follow-up questions.
 
 from __future__ import annotations
 
+import datetime
+import json
+import os
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 from functools import lru_cache
@@ -31,24 +34,74 @@ class BaseMemoryStore(ABC):
     def get_messages(self, session_id: str, last_n: int) -> list[dict]:
         """Get the recent message pairs for a session."""
         pass
+        
+    @abstractmethod
+    def clear_session(self, session_id: str) -> None:
+        """Clear all messages in a session."""
+        pass
 
 
 class DictMemoryStore(BaseMemoryStore):
-    """In-memory dictionary based storage (Not for production scaling)."""
+    """File-backed dictionary storage for session persistence."""
     
     def __init__(self):
-        self._store: dict[str, list[dict]] = {}
+        from src.core.config import get_settings
+        self.settings = get_settings()
+        self.storage_file = os.path.join(self.settings.DATA_DIR, "chat_history.json")
+        self._store: dict[str, dict] = self._load()
         
+    def _load(self) -> dict:
+        if os.path.exists(self.storage_file):
+            try:
+                with open(self.storage_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.error(f"Failed to load chat history: {e}")
+        return {}
+        
+    def _save(self):
+        try:
+            os.makedirs(os.path.dirname(self.storage_file), exist_ok=True)
+            with open(self.storage_file, "w", encoding="utf-8") as f:
+                json.dump(self._store, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.error(f"Failed to save chat history: {e}")
+
     def add_message(self, session_id: str, role: str, content: str) -> None:
         if session_id not in self._store:
-            self._store[session_id] = []
-        self._store[session_id].append({"role": role, "content": content})
+            self._store[session_id] = {
+                "messages": [], 
+                "last_accessed": "",
+                "last_user_message": "",
+                "topic": "New Session"
+            }
+            
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self._store[session_id]["last_accessed"] = now
+        
+        if role == "user":
+            self._store[session_id]["last_user_message"] = content
+            if not self._store[session_id]["messages"]:
+                self._store[session_id]["topic"] = content[:30] + ("..." if len(content) > 30 else "")
+                
+        self._store[session_id]["messages"].append({"role": role, "content": content})
+        self._save()
         
     def get_messages(self, session_id: str, last_n: int) -> list[dict]:
-        history = self._store.get(session_id, [])
+        if session_id not in self._store:
+            return []
+            
+        self._store[session_id]["last_accessed"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self._save()
+        
+        history = self._store[session_id]["messages"]
         if last_n <= 0:
             return []
         return history[-(last_n * 2):]
+
+    def clear_session(self, session_id: str) -> None:
+        self._store.pop(session_id, None)
+        self._save()
 
 
 class ConversationMemory:
