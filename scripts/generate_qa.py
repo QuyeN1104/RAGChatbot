@@ -22,6 +22,9 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
+settings = get_settings()
+
+
 # --- CÁC HÀM XỬ LÝ LLM CŨ CỦA BẠN GIỮ NGUYÊN ---
 
 def parse_json_from_llm(response: str, context: str) -> list[dict[str, str]]:
@@ -174,6 +177,10 @@ def build_dataset(
     hf_pairs: list[dict[str, str]] = []
     if hf_dataset:
         try:
+            settings = get_settings()
+            import os
+            if settings.HF_TOKEN:
+                os.environ["HF_TOKEN"] = settings.HF_TOKEN
             from datasets import load_dataset
             logger.info(f"Downloading Hugging Face dataset '{hf_dataset}'...")
             ds = load_dataset(hf_dataset, split=hf_split)

@@ -61,7 +61,7 @@ def create_llm_client(provider: str = "ollama") :
                 llm = ChatOllama(
                     base_url=settings.OLLAMA_BASE_URL,
                     model=settings.OLLAMA_MODEL,
-                    temperature=0.1,
+                    temperature=settings.TEMPERATURE,
                 )
                 logger.info("Ollama client created")
                 return llm | StrOutputParser()
