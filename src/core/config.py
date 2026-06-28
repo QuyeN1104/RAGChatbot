@@ -16,7 +16,8 @@ class Settings(BaseSettings):
     DATA_DIR: str = "./data"
     # --- LLM Runtime ---
     OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "llama3"
+    OLLAMA_MODEL: str = "bot-rag"
+    TEMPERATURE:float = 0.1
 
     # --- LLM Fallback ---
     GROQ_API_KEY: str = ""
