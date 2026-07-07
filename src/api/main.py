@@ -1,5 +1,5 @@
 """
-FastAPI Application Factory — Main API entry point.
+FastAPI Application Factory - Main API entry point.
 
 Usage:
     uvicorn src.api.main:create_app --factory --reload
@@ -7,7 +7,14 @@ Usage:
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
+from src.api.routes import router
+from src.core.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def create_app() -> FastAPI:
@@ -22,13 +29,28 @@ def create_app() -> FastAPI:
         description="Enterprise RAG System with Local LLM",
         version="0.1.0",
     )
+    app.include_router(router)
 
-    # TODO: Include routers in Sprint 2, Day 12
-    # from src.api.routes import router
-    # app.include_router(router)
+    @app.exception_handler(RequestValidationError)
+    async def validation_exception_handler(
+        request: Request,
+        exc: RequestValidationError,
+    ) -> JSONResponse:
+        logger.warning(f"Validation error for {request.url.path}: {exc}")
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"detail": exc.errors()},
+        )
 
-    @app.get("/health")
-    async def health_check():
-        return {"status": "healthy", "version": "0.1.0"}
+    @app.exception_handler(Exception)
+    async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+        logger.exception(f"Unhandled API error for {request.url.path}")
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content={"detail": "Internal server error."},
+        )
 
     return app
+
+
+app = create_app()
