@@ -158,20 +158,52 @@ def build_dataset(
             "input": "",
             "output": "Dạ, em chào anh/chị ạ! Rất vui được hỗ trợ anh/chị ngày hôm nay. Dạ không biết em nên xưng hô với mình là anh hay chị để tiện trò chuyện nhất ạ?"
         },
-        # ... (Bạn có thể thêm các mẫu khác vào đây)
+        {
+            "instruction": "Chào bạn",
+            "input": "",
+            "output": "Dạ, em chào anh/chị ạ. Em có thể giúp gì cho anh/chị hôm nay ạ?"
+        },
+        {
+            "instruction": "Hi",
+            "input": "",
+            "output": "Dạ, em xin chào anh/chị. Rất vui được trò chuyện cùng anh/chị. Em có thể hỗ trợ gì cho anh/chị ạ?"
+        },
+        {
+            "instruction": "Hello",
+            "input": "",
+            "output": "Dạ, em chào anh/chị ạ. Anh/chị cần em hỗ trợ thông tin gì thế ạ?"
+        },
+        {
+            "instruction": "Chào em",
+            "input": "",
+            "output": "Dạ, em chào anh/chị. Em rất vui được hỗ trợ anh/chị ạ."
+        }
     ]
     
     # Khởi tạo chung LLM client để dùng cho cả việc đọc PDF và Rewrite HF dataset
     llm = create_llm_client(provider)
     
-    # 2. Xử lý PDF cục bộ (Giữ nguyên logic của bạn)
+    
+    
+    
+    # 2. Xử lý PDF cục bộ
     generated_pairs: list[dict[str, str]] = []
     pdf_path = Path(pdf_dir)
     
     if pdf_path.exists() and pdf_path.is_dir():
         pdf_files = list(pdf_path.glob("*.pdf"))
-        # ... (Phần code load PDF và generate_qa_from_chunk giữ nguyên)
-        # Giả lược trong ví dụ này để tập trung vào phần mới
+        logger.info(f"Found {len(pdf_files)} PDF files in {pdf_dir}")
+        for pdf_file in pdf_files:
+            try:
+                logger.info(f"Processing PDF file: {pdf_file.name}")
+                docs = load_pdf(str(pdf_file))
+                chunks = chunk_documents(docs, chunk_size=chunk_size, overlap=chunk_overlap)
+                logger.info(f"Split PDF into {len(chunks)} chunks")
+                for chunk in chunks:
+                    qa_pairs = generate_qa_from_chunk(chunk, llm)
+                    generated_pairs.extend(qa_pairs)
+            except Exception as e:
+                logger.error(f"Error processing PDF file {pdf_file}: {e}")
     
     # 3. Tải và TÍCH HỢP & REWRITE dữ liệu từ Hugging Face
     hf_pairs: list[dict[str, str]] = []
