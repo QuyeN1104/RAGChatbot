@@ -8,6 +8,7 @@ Uses deterministic UUIDs for idempotent upserts.
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from src.core.logger import get_logger
@@ -43,18 +44,36 @@ class VectorStoreManager:
             self._embedding_service = EmbeddingService()
         return self._embedding_service
 
+    def _ensure_persist_directory(self) -> None:
+        """Create and validate the Chroma persistence directory."""
+        persist_dir = Path(self.settings.CHROMA_PERSIST_DIR)
+        try:
+            persist_dir.mkdir(parents=True, exist_ok=True)
+            probe = persist_dir / ".write_test"
+            probe.touch(exist_ok=True)
+            probe.unlink(missing_ok=True)
+        except OSError as e:
+            raise VectorStoreError(
+                f"Vector store path is not writable: {persist_dir}. "
+                "Ensure the directory exists and is writable by the API process."
+            ) from e
+
     @property
     def vector_store(self):
         """Lazy-loads the Chroma vector store."""
         if self._vector_store is None:
             try:
                 from langchain_chroma import Chroma
+
+                self._ensure_persist_directory()
                 self._vector_store = Chroma(
                     collection_name=self.settings.CHROMA_COLLECTION,
                     embedding_function=self.embedding_service.embedder,
                     persist_directory=self.settings.CHROMA_PERSIST_DIR,
                 )
                 logger.info(f"Loaded Chroma vector store from {self.settings.CHROMA_PERSIST_DIR}")
+            except VectorStoreError:
+                raise
             except Exception as e:
                 logger.error(f"Failed to load vector store: {e}")
                 raise VectorStoreError(f"Error loading vector store: {e}") from e
@@ -135,6 +154,7 @@ class VectorStoreManager:
             from langchain_chroma import Chroma
             import chromadb
             
+            self._ensure_persist_directory()
             client = chromadb.PersistentClient(path=self.settings.CHROMA_PERSIST_DIR)
             try:
                 client.delete_collection(self.settings.CHROMA_COLLECTION)
