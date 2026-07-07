@@ -1,2 +1,44 @@
-# Placeholder — Implement in Sprint 2, Day 13-14
-# See PROJECT_PLAN.md for details
+FROM python:3.10-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    VIRTUAL_ENV=/opt/venv
+
+RUN pip install --no-cache-dir uv==0.10.11 && \
+    uv venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+WORKDIR /app
+COPY requirements.txt .
+RUN uv pip install --python $VIRTUAL_ENV/bin/python --index-strategy unsafe-best-match -r requirements.txt
+
+FROM python:3.10-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:$PATH" \
+    HOME=/app \
+    HF_HOME=/app/.cache/huggingface \
+    SENTENCE_TRANSFORMERS_HOME=/app/.cache/sentence-transformers \
+    DATA_DIR=/app/data \
+    CHROMA_PERSIST_DIR=/app/data/vector_db
+
+WORKDIR /app
+
+RUN addgroup --system app && \
+    adduser --system --ingroup app app && \
+    mkdir -p /app/data /app/.cache/huggingface /app/.cache/sentence-transformers && \
+    chown -R app:app /app
+
+COPY --from=builder /opt/venv /opt/venv
+COPY src ./src
+COPY pyproject.toml README.md ./
+
+USER app
+EXPOSE 8000
+
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
