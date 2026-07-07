@@ -17,6 +17,9 @@ RUN uv pip install --python $VIRTUAL_ENV/bin/python --index-strategy unsafe-best
 
 FROM python:3.10-slim AS runtime
 
+ARG APP_UID=1000
+ARG APP_GID=1000
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     VIRTUAL_ENV=/opt/venv \
@@ -29,8 +32,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN addgroup --system app && \
-    adduser --system --ingroup app app && \
+RUN groupadd --gid "${APP_GID}" app && \
+    useradd --uid "${APP_UID}" --gid "${APP_GID}" --home-dir /app --shell /usr/sbin/nologin app && \
     mkdir -p /app/data /app/.cache/huggingface /app/.cache/sentence-transformers && \
     chown -R app:app /app
 

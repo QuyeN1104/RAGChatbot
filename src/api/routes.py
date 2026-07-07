@@ -17,13 +17,24 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 
 from src.agent.memory import ConversationMemory
 from src.api.dependencies import get_app_settings, get_llm_client, get_memory, get_vector_store
-from src.api.schemas import ChatRequest, ChatResponse, HealthResponse, Source, UploadResponse
+from src.api.schemas import (
+    ChatRequest,
+    ChatResponse,
+    DeleteResponse,
+    DocumentListResponse,
+    HealthResponse,
+    SessionDetailResponse,
+    SessionListResponse,
+    SessionSummary,
+    Source,
+    UploadResponse,
+)
 from src.core.config import Settings
 from src.core.exceptions import DocumentError, LLMConnectionError, RAGException, VectorStoreError
 from src.core.llm_client import LLMProvider
 from src.core.logger import get_logger
 from src.rag.document import chunk_documents, load_pdf
-from src.rag.retriever import generate_answer, retrieve_context
+from src.agent.graph import create_agent_graph
 from src.rag.vector_store import VectorStoreManager
 
 logger = get_logger(__name__)
@@ -54,6 +65,95 @@ async def health_check() -> HealthResponse:
     return HealthResponse(status="healthy", version="0.1.0")
 
 
+
+
+@router.get("/documents", response_model=DocumentListResponse)
+async def list_documents(
+    vector_store: VectorStoreManager = Depends(get_vector_store),
+) -> DocumentListResponse:
+    """List uploaded document sources."""
+    try:
+        return DocumentListResponse(documents=vector_store.list_documents())
+    except VectorStoreError as e:
+        logger.error(f"Document listing failed: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+
+
+@router.delete("/documents/{source_name}", response_model=DeleteResponse)
+async def delete_document(
+    source_name: str,
+    vector_store: VectorStoreManager = Depends(get_vector_store),
+) -> DeleteResponse:
+    """Delete all vector chunks for a document source."""
+    try:
+        deleted = vector_store.delete_document(source_name)
+        if not deleted:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Document '{source_name}' not found.",
+            )
+        return DeleteResponse(message=f"Deleted document: {source_name}")
+    except HTTPException:
+        raise
+    except VectorStoreError as e:
+        logger.error(f"Document deletion failed: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+
+
+@router.get("/sessions", response_model=SessionListResponse)
+async def list_sessions(
+    memory: ConversationMemory = Depends(get_memory),
+) -> SessionListResponse:
+    """List server-side memory sessions."""
+    store = getattr(memory.store, "_store", {})
+    sessions = []
+    for session_id, metadata in store.items():
+        sessions.append(
+            SessionSummary(
+                session_id=session_id,
+                topic=metadata.get("topic"),
+                last_user_message=metadata.get("last_user_message"),
+                last_accessed=metadata.get("last_accessed"),
+                message_count=len(metadata.get("messages", [])),
+            )
+        )
+    sessions.sort(key=lambda item: item.last_accessed or "", reverse=True)
+    return SessionListResponse(sessions=sessions)
+
+
+@router.get("/sessions/{session_id}", response_model=SessionDetailResponse)
+async def get_session(
+    session_id: str,
+    memory: ConversationMemory = Depends(get_memory),
+) -> SessionDetailResponse:
+    """Return full server-side messages for a session."""
+    store = getattr(memory.store, "_store", {})
+    metadata = store.get(session_id)
+    if metadata is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Session '{session_id}' not found.",
+        )
+
+    return SessionDetailResponse(
+        session_id=session_id,
+        topic=metadata.get("topic"),
+        last_user_message=metadata.get("last_user_message"),
+        last_accessed=metadata.get("last_accessed"),
+        messages=metadata.get("messages", []),
+    )
+
+
+@router.delete("/sessions/{session_id}", response_model=DeleteResponse)
+async def clear_session(
+    session_id: str,
+    memory: ConversationMemory = Depends(get_memory),
+) -> DeleteResponse:
+    """Clear server-side history for a session."""
+    memory.store.clear_session(session_id)
+    return DeleteResponse(message=f"Cleared session: {session_id}")
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
@@ -62,7 +162,7 @@ async def chat(
     memory: ConversationMemory = Depends(get_memory),
     settings: Settings = Depends(get_app_settings),
 ) -> ChatResponse:
-    """Answer a user message with retrieved document context."""
+    """Answer a user message using the same routed graph as the CLI."""
     message = request.message.strip()
     if not message:
         raise HTTPException(
@@ -71,27 +171,19 @@ async def chat(
         )
 
     session_id = request.session_id or str(uuid4())
-    top_k = request.top_k or settings.TOP_K
 
     try:
-        history = memory.get_history(session_id)
-        query = memory.reformulate_query(message, history, llm)
-        documents = retrieve_context(query, vector_store, top_k=top_k)
-        if not documents:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No relevant documents found for this query.",
-            )
-
-        answer = generate_answer(query, documents, llm, history=history)
-        memory.add(message, answer, session_id)
+        if request.top_k is not None:
+            settings.TOP_K = request.top_k
+        app = create_agent_graph(llm=llm, vector_store=vector_store, memory=memory)
+        result = app.invoke({"query": message, "session_id": session_id})
+        raw_sources = result.get("sources", []) or []
+        sources = [Source(source=str(src.get("source", "Unknown")), page=src.get("page")) for src in raw_sources]
         return ChatResponse(
-            answer=answer,
-            sources=_format_sources(documents),
+            answer=result.get("answer", ""),
+            sources=sources,
             session_id=session_id,
         )
-    except HTTPException:
-        raise
     except (LLMConnectionError, VectorStoreError, RAGException) as e:
         logger.error(f"Chat request failed: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e

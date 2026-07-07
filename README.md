@@ -93,6 +93,48 @@ pytest -v
 
 ---
 
+## 🚢 CI/CD với GitHub Actions và Vercel
+
+Repository này có workflow tại `.github/workflows/vercel.yml`:
+
+- Pull request: chạy Python tests và build React UI.
+- Push lên `main` hoặc `master`: chạy tests/build, sau đó deploy production lên Vercel.
+
+### 1. Tạo project trên Vercel
+
+Import repository GitHub vào Vercel. Project này deploy phần frontend Vite trong thư mục `ui/`; backend FastAPI cần một host riêng nếu chạy production.
+
+Trong Vercel project settings, thêm biến môi trường:
+
+```bash
+VITE_API_BASE_URL=https://your-api-domain.example.com
+```
+
+Nếu không cấu hình biến này, UI sẽ gọi `/api` cùng domain Vercel và không kết nối được backend FastAPI riêng.
+
+### 2. Thêm GitHub Actions secrets
+
+Trong GitHub repository, vào `Settings` → `Secrets and variables` → `Actions`, thêm:
+
+```bash
+VERCEL_TOKEN=...
+VERCEL_ORG_ID=...
+VERCEL_PROJECT_ID=...
+```
+
+Lấy các giá trị này bằng Vercel CLI:
+
+```bash
+npm install -g vercel
+vercel login
+vercel link
+cat .vercel/project.json
+```
+
+`orgId` tương ứng `VERCEL_ORG_ID`, `projectId` tương ứng `VERCEL_PROJECT_ID`. `VERCEL_TOKEN` tạo tại Vercel Account Settings → Tokens.
+
+---
+
 ## 📁 Cấu trúc Dự án (Project Structure)
 
 ```text

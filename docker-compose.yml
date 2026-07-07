@@ -1,2 +1,30 @@
-# Placeholder — Implement in Sprint 3, Day 16
-# See PROJECT_PLAN.md for details
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      args:
+        APP_UID: ${UID:-1000}
+        APP_GID: ${GID:-1000}
+    image: rag-api:latest
+    network_mode: host
+    env_file:
+      - .env
+    environment:
+      DATA_DIR: /app/data
+      CHROMA_PERSIST_DIR: /app/data/vector_db
+    volumes:
+      - ./data:/app/data
+
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    image: rag-ui:latest
+    ports:
+      - "3000:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - api
+

@@ -45,3 +45,48 @@ class HealthResponse(BaseModel):
 
     status: str
     version: str
+
+class DocumentListResponse(BaseModel):
+    """Response body for GET /documents."""
+
+    documents: list[str]
+
+
+class DeleteResponse(BaseModel):
+    """Generic delete/clear response."""
+
+    message: str
+
+
+class SessionSummary(BaseModel):
+    """Summary of a stored chat session."""
+
+    session_id: str
+    topic: str | None = None
+    last_user_message: str | None = None
+    last_accessed: str | None = None
+    message_count: int
+
+
+class ChatMessage(BaseModel):
+    """Stored chat message."""
+
+    role: str
+    content: str
+
+
+class SessionDetailResponse(BaseModel):
+    """Response body for GET /sessions/{session_id}."""
+
+    session_id: str
+    topic: str | None = None
+    last_user_message: str | None = None
+    last_accessed: str | None = None
+    messages: list[ChatMessage]
+
+
+class SessionListResponse(BaseModel):
+    """Response body for GET /sessions."""
+
+    sessions: list[SessionSummary]
+

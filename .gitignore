@@ -53,4 +53,7 @@ htmlcov/
 
 # Jupyter
 .ipynb_checkpoints/
+# JavaScript UI
+ui/node_modules/
+ui/dist/
 

@@ -16,6 +16,7 @@ models
 reports
 logs
 notebooks
-ui
 Dockerfile.ui
 docs/assets
+ui/node_modules
+ui/dist
