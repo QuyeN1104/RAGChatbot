@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     GROQ_MODEL: str = "llama-3.1-70b-versatile"
     OPENAI_MODEL: str = "gpt-5.4-mini"
     GEMINI_MODEL: str = "gemini-2.5-flash"
+    LLM_TIMEOUT_SECONDS: float = 20.0
+    LLM_MAX_RETRIES: int = 1
 
     # --- Embedding ---
     HF_TOKEN: str = ""
