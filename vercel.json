@@ -15,7 +15,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/ui/index.html"
+      "dest": "/index.html"
     }
   ]
 }
