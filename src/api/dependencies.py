@@ -22,8 +22,9 @@ def get_app_settings() -> Settings:
 
 @lru_cache(maxsize=1)
 def get_llm_client() -> LLMProvider:
-    """Return a cached LLM client."""
-    return create_llm_client("ollama")
+    """Return a cached default LLM client."""
+    settings = get_app_settings()
+    return create_llm_client(settings.DEFAULT_LLM_PROVIDER)
 
 
 @lru_cache(maxsize=1)

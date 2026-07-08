@@ -17,6 +17,8 @@ body {
 }
 
 button,
+input,
+select,
 textarea {
   font: inherit;
 }
@@ -241,6 +243,8 @@ button:disabled {
 }
 
 .status-pill,
+.model-picker,
+.api-key-field,
 .upload-status {
   display: inline-flex;
   align-items: center;
@@ -252,6 +256,31 @@ button:disabled {
   padding: 8px 12px;
   font-size: 13px;
   min-height: 34px;
+}
+
+.model-picker,
+.api-key-field {
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.model-picker span,
+.api-key-field span {
+  color: #687586;
+  font-size: 12px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.model-picker select,
+.api-key-field input {
+  min-width: 210px;
+  max-width: 260px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #17202a;
+  font-weight: 650;
 }
 
 .status-dot {
@@ -480,6 +509,13 @@ button:disabled {
   .topbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .model-picker select,
+  .api-key-field input {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
   }
 
   .upload-zone {
