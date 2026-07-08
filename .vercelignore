@@ -1,0 +1,12 @@
+# Ignore backend code to prevent Vercel CLI from analyzing Python files
+src/
+tests/
+scripts/
+data/
+models/
+.venv/
+Dockerfile.*
+docker-compose.yml
+requirements.txt
+pyproject.toml
+main_cli.py
