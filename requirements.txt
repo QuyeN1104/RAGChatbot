@@ -1,7 +1,7 @@
 # Runtime dependencies for the FastAPI RAG API
-# Use CPU-only PyTorch wheels to avoid CUDA runtime packages in the API image.
+# Use CPU-only PyTorch wheels to avoid CUDA runtime packages.
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.6.0+cpu
+torch
 
 langchain>=0.3.0
 langchain-community>=0.3.0

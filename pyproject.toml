@@ -84,6 +84,4 @@ warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
 
-[tool.vercel]
-entrypoint = "src.api.main:app"
 
