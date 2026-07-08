@@ -9,6 +9,7 @@ Endpoints:
 
 from __future__ import annotations
 
+import asyncio
 import tempfile
 from pathlib import Path
 from uuid import uuid4
@@ -190,9 +191,16 @@ async def chat(
 
         provider = (request.provider or settings.DEFAULT_LLM_PROVIDER).strip().lower()
         model = (request.model or default_model_for_provider(provider)).strip()
-        llm = create_llm_client(provider, model, request.api_key)
-        app = create_agent_graph(llm=llm, vector_store=vector_store, memory=memory)
-        result = app.invoke({"query": message, "session_id": session_id})
+
+        def run_chat_graph() -> dict:
+            llm = create_llm_client(provider, model, request.api_key)
+            app = create_agent_graph(llm=llm, vector_store=vector_store, memory=memory)
+            return app.invoke({"query": message, "session_id": session_id})
+
+        result = await asyncio.wait_for(
+            asyncio.to_thread(run_chat_graph),
+            timeout=settings.CHAT_TIMEOUT_SECONDS,
+        )
         raw_sources = result.get("sources", []) or []
         sources = [Source(source=str(src.get("source", "Unknown")), page=src.get("page")) for src in raw_sources]
         return ChatResponse(
@@ -208,6 +216,12 @@ async def chat(
     except (LLMConnectionError, VectorStoreError, RAGException) as e:
         logger.error(f"Chat request failed: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+    except asyncio.TimeoutError as e:
+        logger.error(f"Chat request timed out after {settings.CHAT_TIMEOUT_SECONDS} seconds")
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=f"Chat request timed out after {settings.CHAT_TIMEOUT_SECONDS:g} seconds.",
+        ) from e
     except Exception as e:
         logger.exception("Unexpected chat request failure")
         raise HTTPException(

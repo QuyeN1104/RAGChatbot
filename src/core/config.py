@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-2.5-flash"
     LLM_TIMEOUT_SECONDS: float = 20.0
     LLM_MAX_RETRIES: int = 1
+    CHAT_TIMEOUT_SECONDS: float = 25.0
 
     # --- Embedding ---
     HF_TOKEN: str = ""
