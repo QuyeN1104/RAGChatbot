@@ -146,6 +146,8 @@ def create_llm_client(
                     api_key=resolved_key,
                     model=selected_model,
                     temperature=settings.TEMPERATURE,
+                    timeout=settings.LLM_TIMEOUT_SECONDS,
+                    max_retries=settings.LLM_MAX_RETRIES,
                 )
                 logger.info(f"Groq client created with model: {selected_model}")
                 return llm | StrOutputParser()
@@ -165,6 +167,8 @@ def create_llm_client(
                     api_key=resolved_key,
                     model=selected_model,
                     temperature=settings.TEMPERATURE,
+                    timeout=settings.LLM_TIMEOUT_SECONDS,
+                    max_retries=settings.LLM_MAX_RETRIES,
                 )
                 logger.info(f"OpenAI client created with model: {selected_model}")
                 return llm | StrOutputParser()
@@ -184,6 +188,8 @@ def create_llm_client(
                     api_key=resolved_key,
                     model=selected_model,
                     temperature=settings.TEMPERATURE,
+                    request_timeout=settings.LLM_TIMEOUT_SECONDS,
+                    retries=settings.LLM_MAX_RETRIES,
                 )
                 logger.info(f"Gemini client created with model: {selected_model}")
                 return llm | StrOutputParser()
