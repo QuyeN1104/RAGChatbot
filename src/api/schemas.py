@@ -20,6 +20,9 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, description="User message")
     session_id: str | None = Field(default=None, description="Conversation session ID")
     top_k: int | None = Field(default=None, ge=1, le=20, description="Number of chunks to retrieve")
+    provider: str | None = Field(default=None, description="LLM provider: ollama, groq, openai, gemini")
+    model: str | None = Field(default=None, description="Provider-specific model name")
+    api_key: str | None = Field(default=None, description="Provider API key for this request only")
 
 
 class ChatResponse(BaseModel):
@@ -28,6 +31,8 @@ class ChatResponse(BaseModel):
     answer: str
     sources: list[Source]
     session_id: str
+    provider: str
+    model: str
 
 
 class UploadResponse(BaseModel):
@@ -90,3 +95,19 @@ class SessionListResponse(BaseModel):
 
     sessions: list[SessionSummary]
 
+
+
+class ModelChoice(BaseModel):
+    """Frontend model picker option."""
+
+    provider: str
+    model: str
+    label: str
+
+
+class ModelListResponse(BaseModel):
+    """Response body for GET /models."""
+
+    default_provider: str
+    default_model: str
+    models: list[ModelChoice]

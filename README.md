@@ -48,13 +48,14 @@ Dự án được triển khai dựa trên kế hoạch trong [PROJECT_PLAN.md](
 
 - **PDF ingestion**: load PDF, tách chunk, giữ metadata `source` và `page`.
 - **Vector search**: embedding bằng `BAAI/bge-m3`, lưu và truy vấn bằng ChromaDB.
-- **RAG answering**: retrieve context, ghép prompt, sinh câu trả lời bằng Ollama local LLM.
+- **RAG answering**: retrieve context, ghép prompt, sinh câu trả lời bằng Ollama local LLM hoặc cloud model.
+- **Multi-provider LLM**: chọn model từ UI giữa Ollama, Gemini, OpenAI và Groq.
 - **Agentic routing**: phân loại câu hỏi thành `INTERNAL_DOC` hoặc `GENERAL_CHAT`.
 - **LangGraph agent flow**: gom router, retrieval, generation và memory thành graph.
 - **Conversation memory**: lưu session, chuyển session, tiếp tục phiên cũ.
 - **Re-ranking**: hỗ trợ `BAAI/bge-reranker-v2-m3` cho two-stage retrieval.
 - **CLI app**: upload/list/delete document, chat, session history.
-- **FastAPI backend**: `/health`, `/chat`, `/upload`, `/documents`, `/sessions`.
+- **FastAPI backend**: `/health`, `/models`, `/chat`, `/upload`, `/documents`, `/sessions`.
 - **React/Vite frontend**: chat UI, upload PDF, quản lý documents và sessions.
 - **Docker support**: `Dockerfile.api`, `Dockerfile.ui`, `docker-compose.yml`.
 - **CI/CD**: GitHub Actions test/build, Render backend deploy, Vercel frontend deploy.
@@ -194,6 +195,12 @@ Các biến quan trọng:
 ```env
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3
+DEFAULT_LLM_PROVIDER=ollama
+OPENAI_API_KEY=
+GOOGLE_API_KEY=
+GEMINI_API_KEY=
+OPENAI_MODEL=gpt-5.4-mini
+GEMINI_MODEL=gemini-2.5-flash
 EMBEDDING_MODEL=BAAI/bge-m3
 CHROMA_PERSIST_DIR=./data/vector_db
 CHROMA_COLLECTION=documents
@@ -244,6 +251,7 @@ Endpoints chính:
 | Method | Endpoint | Mục đích |
 | --- | --- | --- |
 | `GET` | `/health` | Kiểm tra trạng thái API |
+| `GET` | `/models` | Danh sách provider/model cho UI |
 | `POST` | `/chat` | Gửi câu hỏi và nhận câu trả lời RAG |
 | `POST` | `/upload` | Upload PDF và ingest vào vector DB |
 | `GET` | `/documents` | Liệt kê tài liệu đã ingest |
@@ -330,6 +338,8 @@ VITE_API_BASE_URL=https://your-render-backend.onrender.com
 Lưu ý deploy:
 
 - `VITE_API_BASE_URL` phải là URL public của FastAPI backend, không phải Render deploy hook.
+- Nếu deploy public không chạy được Ollama local, phương án an toàn nhất là đặt `DEFAULT_LLM_PROVIDER=gemini` hoặc `DEFAULT_LLM_PROVIDER=openai` trên Render và thêm API key trong Render environment.
+- Nếu người dùng tự nhập API key trên UI, key chỉ được giữ trong memory của tab hiện tại và gửi theo từng request `/chat`; frontend không lưu key vào `localStorage`, backend không lưu key vào DB/session/vector store.
 - Backend Render và frontend Vercel là 2 service riêng.
 - Backend đã cấu hình CORS cho Vercel domains trong `src/api/main.py`.
 - Nếu Vercel Root Directory là repo root, dùng `vercel.json` ở root.

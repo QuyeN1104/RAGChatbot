@@ -16,13 +16,14 @@ from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 
 from src.agent.memory import ConversationMemory
-from src.api.dependencies import get_app_settings, get_llm_client, get_memory, get_vector_store
+from src.api.dependencies import get_app_settings, get_memory, get_vector_store
 from src.api.schemas import (
     ChatRequest,
     ChatResponse,
     DeleteResponse,
     DocumentListResponse,
     HealthResponse,
+    ModelListResponse,
     SessionDetailResponse,
     SessionListResponse,
     SessionSummary,
@@ -31,7 +32,7 @@ from src.api.schemas import (
 )
 from src.core.config import Settings
 from src.core.exceptions import DocumentError, LLMConnectionError, RAGException, VectorStoreError
-from src.core.llm_client import LLMProvider
+from src.core.llm_client import create_llm_client, default_model_for_provider, get_available_models
 from src.core.logger import get_logger
 from src.rag.document import chunk_documents, load_pdf
 from src.agent.graph import create_agent_graph
@@ -64,6 +65,18 @@ async def health_check() -> HealthResponse:
     """Return API health status."""
     return HealthResponse(status="healthy", version="0.1.0")
 
+
+@router.get("/models", response_model=ModelListResponse)
+async def list_models(
+    settings: Settings = Depends(get_app_settings),
+) -> ModelListResponse:
+    """Return configured LLM model choices for the frontend."""
+    default_provider = settings.DEFAULT_LLM_PROVIDER.strip().lower()
+    return ModelListResponse(
+        default_provider=default_provider,
+        default_model=default_model_for_provider(default_provider),
+        models=get_available_models(),
+    )
 
 
 
@@ -157,7 +170,6 @@ async def clear_session(
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
     request: ChatRequest,
-    llm: LLMProvider = Depends(get_llm_client),
     vector_store: VectorStoreManager = Depends(get_vector_store),
     memory: ConversationMemory = Depends(get_memory),
     settings: Settings = Depends(get_app_settings),
@@ -175,6 +187,10 @@ async def chat(
     try:
         if request.top_k is not None:
             settings.TOP_K = request.top_k
+
+        provider = (request.provider or settings.DEFAULT_LLM_PROVIDER).strip().lower()
+        model = (request.model or default_model_for_provider(provider)).strip()
+        llm = create_llm_client(provider, model, request.api_key)
         app = create_agent_graph(llm=llm, vector_store=vector_store, memory=memory)
         result = app.invoke({"query": message, "session_id": session_id})
         raw_sources = result.get("sources", []) or []
@@ -183,7 +199,12 @@ async def chat(
             answer=result.get("answer", ""),
             sources=sources,
             session_id=session_id,
+            provider=provider,
+            model=model,
         )
+    except ValueError as e:
+        logger.error(f"Invalid chat model selection: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
     except (LLMConnectionError, VectorStoreError, RAGException) as e:
         logger.error(f"Chat request failed: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e

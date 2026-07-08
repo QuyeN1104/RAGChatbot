@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     # --- LLM Fallback ---
     GROQ_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
+    GOOGLE_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+    DEFAULT_LLM_PROVIDER: str = "ollama"
+    GROQ_MODEL: str = "llama-3.1-70b-versatile"
+    OPENAI_MODEL: str = "gpt-5.4-mini"
+    GEMINI_MODEL: str = "gemini-2.5-flash"
 
     # --- Embedding ---
     HF_TOKEN: str = ""

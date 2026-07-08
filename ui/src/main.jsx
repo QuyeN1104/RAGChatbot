@@ -20,6 +20,13 @@ import './styles.css';
 const rawApiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
 const API_BASE_URL = rawApiBaseUrl.replace(/\/+$/, '');
 const ACTIVE_KEY = 'rag-chat.active-session.v2';
+const MODEL_KEY = 'rag-chat.selected-model.v1';
+const FALLBACK_MODELS = [
+  { provider: 'ollama', model: 'bot-rag', label: 'Ollama - bot-rag' },
+  { provider: 'gemini', model: 'gemini-2.5-flash', label: 'Gemini - gemini-2.5-flash' },
+  { provider: 'openai', model: 'gpt-5.4-mini', label: 'OpenAI - gpt-5.4-mini' },
+  { provider: 'groq', model: 'llama-3.1-70b-versatile', label: 'Groq - llama-3.1-70b-versatile' },
+];
 
 function createSessionState(sessionId = crypto.randomUUID()) {
   return {
@@ -63,6 +70,15 @@ async function readApiResponse(response) {
   throw { detail: 'HTTP ' + response.status };
 }
 
+function modelKey(model) {
+  return model.provider + ':' + model.model;
+}
+
+function parseModelKey(value, options) {
+  return options.find((model) => modelKey(model) === value) || options[0];
+}
+
+
 function titleForSession(session) {
   return session.topic || session.last_user_message || session.session_id;
 }
@@ -75,6 +91,9 @@ function App() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState(null);
   const [apiStatus, setApiStatus] = useState('checking');
+  const [modelOptions, setModelOptions] = useState(FALLBACK_MODELS);
+  const [selectedModel, setSelectedModel] = useState(() => parseModelKey(localStorage.getItem(MODEL_KEY), FALLBACK_MODELS));
+  const [modelApiKey, setModelApiKey] = useState('');
   const [documents, setDocuments] = useState([]);
   const [isRefreshingDocs, setIsRefreshingDocs] = useState(false);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
@@ -91,7 +110,12 @@ function App() {
   }, [activeSession.id]);
 
   useEffect(() => {
+    localStorage.setItem(MODEL_KEY, modelKey(selectedModel));
+  }, [selectedModel]);
+
+  useEffect(() => {
     checkHealth();
+    refreshModels();
     refreshDocuments();
     refreshServerSessions().then((sessions) => {
       const activeId = localStorage.getItem(ACTIVE_KEY);
@@ -109,12 +133,35 @@ function App() {
 
   async function checkHealth() {
     try {
-      const response = await fetch(`${API_BASE_URL}/health`);
+      const response = await fetch(API_BASE_URL + '/health');
       setApiStatus(response.ok ? 'online' : 'offline');
     } catch {
       setApiStatus('offline');
     }
   }
+
+  async function refreshModels() {
+    try {
+      const response = await fetch(API_BASE_URL + '/models');
+      const payload = await readApiResponse(response);
+      if (!response.ok) throw payload;
+      const models = payload.models?.length ? payload.models : FALLBACK_MODELS;
+      setModelOptions(models);
+      setSelectedModel((current) => {
+        const saved = localStorage.getItem(MODEL_KEY);
+        return parseModelKey(saved || modelKey(current), models);
+      });
+    } catch {
+      setModelOptions(FALLBACK_MODELS);
+    }
+  }
+
+  function changeModel(event) {
+    setSelectedModel(parseModelKey(event.target.value, modelOptions));
+    setModelApiKey('');
+  }
+
+  const selectedProviderNeedsKey = selectedModel.provider !== 'ollama';
 
   function startSession() {
     setActiveSession(createSessionState());
@@ -217,7 +264,14 @@ function App() {
       const response = await fetch(`${API_BASE_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, session_id: sessionId, top_k: 5 }),
+        body: JSON.stringify({
+          message,
+          session_id: sessionId,
+          top_k: 5,
+          provider: selectedModel.provider,
+          model: selectedModel.model,
+          api_key: modelApiKey.trim() || undefined,
+        }),
       });
       const payload = await readApiResponse(response);
       if (!response.ok) throw payload;
@@ -362,6 +416,31 @@ function App() {
             <span className={`status-dot ${apiStatus}`} />
             {apiStatus}
           </div>
+
+          <label className="model-picker">
+            <span>Model</span>
+            <select value={modelKey(selectedModel)} onChange={changeModel} aria-label="Select model">
+              {modelOptions.map((model) => (
+                <option key={modelKey(model)} value={modelKey(model)}>
+                  {model.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {selectedProviderNeedsKey && (
+            <label className="api-key-field">
+              <span>API key</span>
+              <input
+                type="password"
+                value={modelApiKey}
+                onChange={(event) => setModelApiKey(event.target.value)}
+                placeholder={`Enter  API key`}
+                autoComplete="off"
+                aria-label="Provider API key"
+              />
+            </label>
+          )}
 
           <div className="upload-zone">
             <button className="secondary-action" onClick={clearCurrentSession} disabled={!activeSession?.messages.length} type="button">
