@@ -81,7 +81,8 @@ def create_agent_graph(
         """Node: Retrieves context from the vector store for RAG."""
         logger.info("--- NODE: Retrieve Context ---")
         query = state.get("reformulated_query", state["query"])
-        docs = retrieve_context(query, vector_store, settings.TOP_K)
+        top_k = state.get("top_k", settings.TOP_K)
+        docs = retrieve_context(query, vector_store, top_k)
         return {"context": docs}
 
     def generate_rag_node(state: AgentState) -> dict:

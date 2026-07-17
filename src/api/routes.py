@@ -209,9 +209,6 @@ async def chat(
     session_id = request.session_id or str(uuid4())
 
     try:
-        if request.top_k is not None:
-            settings.TOP_K = request.top_k
-
         provider = (request.provider or settings.DEFAULT_LLM_PROVIDER).strip().lower()
         model = (request.model or default_model_for_provider(provider)).strip()
 
@@ -231,7 +228,7 @@ async def chat(
                 app = create_agent_graph(llm=llm, vector_store=vector_store, memory=memory)
             else:
                 app = get_agent_runtime(provider, model)
-            return app.invoke({"query": message, "session_id": session_id})
+            return app.invoke({"query": message, "session_id": session_id, "top_k": request.top_k or settings.TOP_K})
 
         result = await asyncio.wait_for(
             asyncio.to_thread(run_chat_graph),
