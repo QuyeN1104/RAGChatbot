@@ -306,7 +306,10 @@ curl http://localhost:8000/ready
 Chạy benchmark startup, danh sách session và chat latency (min/mean/p50/p95/max):
 
 ```bash
-python scripts/benchmark_api.py --requests 5 --warmup 1
+python scripts/benchmark_api.py --requests 10 --warmup 1 --concurrency 1
+
+# Concurrent load + regression gates
+python scripts/benchmark_api.py --requests 20 --concurrency 4 --max-p95-ms 30000 --max-error-rate 0
 ```
 
 Các mặc định hiệu năng trong `.env.example` tắt hai lượt LLM phụ cho reformulation và intent classification. Bật lại nếu cần chất lượng hội thoại follow-up cao hơn:
