@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from langgraph.graph import END, StateGraph
 
 from src.agent.state import AgentState
-from src.agent.router import classify_intent
+from src.agent.router import classify_intent, classify_intent_fast
 from src.rag.retriever import retrieve_context, generate_answer
 from src.core.config import get_settings
 from src.core.logger import get_logger
@@ -54,8 +54,12 @@ def create_agent_graph(
         query = state["query"]
         session_id = state.get("session_id", "default")
         
-        history = memory.get_history(session_id)
-        standalone_query = memory.reformulate_query(query, history, llm)
+        history = memory.get_history(session_id, last_n=settings.MEMORY_HISTORY_PAIRS)
+        standalone_query = (
+            memory.reformulate_query(query, history, llm)
+            if settings.ENABLE_LLM_QUERY_REFORMULATION and history
+            else query
+        )
         
         return {
             "reformulated_query": standalone_query,
@@ -66,14 +70,19 @@ def create_agent_graph(
         """Node: Classifies the intent of the reformulated query."""
         logger.info("--- NODE: Classify Intent ---")
         query = state.get("reformulated_query", state["query"])
-        intent = classify_intent(query, llm)
+        intent = (
+            classify_intent(query, llm)
+            if settings.ENABLE_LLM_INTENT_CLASSIFICATION
+            else classify_intent_fast(query)
+        )
         return {"intent": intent}
 
     def retrieve_node(state: AgentState) -> dict:
         """Node: Retrieves context from the vector store for RAG."""
         logger.info("--- NODE: Retrieve Context ---")
         query = state.get("reformulated_query", state["query"])
-        docs = retrieve_context(query, vector_store, settings.TOP_K)
+        top_k = state.get("top_k", settings.TOP_K)
+        docs = retrieve_context(query, vector_store, top_k)
         return {"context": docs}
 
     def generate_rag_node(state: AgentState) -> dict:

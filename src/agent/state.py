@@ -15,6 +15,7 @@ class AgentState(TypedDict, total=False):
     # Input
     query: str
     session_id: str
+    top_k: int
 
     # Router
     intent: str  # "INTERNAL_DOC" | "GENERAL_CHAT"

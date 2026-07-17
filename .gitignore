@@ -57,3 +57,6 @@ htmlcov/
 ui/node_modules/
 ui/dist/
 
+.codex/*
+.agents/*
+data/model_cache

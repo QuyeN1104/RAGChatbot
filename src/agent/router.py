@@ -58,6 +58,20 @@ Intent:"""
         return "INTERNAL_DOC"
 
 
+
+def classify_intent_fast(query: str) -> Literal["INTERNAL_DOC", "GENERAL_CHAT"]:
+    """Deterministic low-latency router; defaults substantive questions to RAG."""
+    normalized = " ".join(query.strip().lower().split())
+    general_prefixes = (
+        "xin chào", "chào", "hello", "hi ", "hey", "cảm ơn", "thanks",
+        "bạn là ai", "what are you", "how are you",
+    )
+    if normalized in {"hi", "hello", "hey", "chào", "xin chào"}:
+        return "GENERAL_CHAT"
+    if any(normalized.startswith(prefix) for prefix in general_prefixes):
+        return "GENERAL_CHAT"
+    return "INTERNAL_DOC"
+
 def execute_route(
     intent: str,
     query: str,

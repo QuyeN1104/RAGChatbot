@@ -293,6 +293,31 @@ Sau khi chạy:
 - API dùng network host để kết nối Ollama local.
 - UI chạy tại `http://localhost:3000`.
 - Dữ liệu persistent nằm trong `./data`.
+- Compose chỉ khởi động UI sau khi `/ready` xác nhận embedding, Chroma, memory, model và LangGraph đã warm.
+
+### Readiness và benchmark
+
+Xem chi tiết cold-start theo từng giai đoạn:
+
+```bash
+curl http://localhost:8000/ready
+```
+
+Chạy benchmark startup, danh sách session và chat latency (min/mean/p50/p95/max):
+
+```bash
+python scripts/benchmark_api.py --requests 10 --warmup 1 --concurrency 1
+
+# Concurrent load + regression gates
+python scripts/benchmark_api.py --requests 20 --concurrency 4 --max-p95-ms 30000 --max-error-rate 0
+```
+
+Các mặc định hiệu năng trong `.env.example` tắt hai lượt LLM phụ cho reformulation và intent classification. Bật lại nếu cần chất lượng hội thoại follow-up cao hơn:
+
+```env
+ENABLE_LLM_QUERY_REFORMULATION=true
+ENABLE_LLM_INTENT_CLASSIFICATION=true
+```
 
 ---
 

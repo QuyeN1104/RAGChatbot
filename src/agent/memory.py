@@ -10,6 +10,7 @@ from __future__ import annotations
 import datetime
 import json
 import os
+import threading
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 from functools import lru_cache
@@ -48,6 +49,7 @@ class DictMemoryStore(BaseMemoryStore):
         from src.core.config import get_settings
         self.settings = get_settings()
         self.storage_file = os.path.join(self.settings.DATA_DIR, "chat_history.json")
+        self._lock = threading.RLock()
         self._store: dict[str, dict] = self._load()
         
     def _load(self) -> dict:
@@ -60,10 +62,13 @@ class DictMemoryStore(BaseMemoryStore):
         return {}
         
     def _save(self):
+        """Atomically persist compact JSON once per logical mutation."""
         try:
             os.makedirs(os.path.dirname(self.storage_file), exist_ok=True)
-            with open(self.storage_file, "w", encoding="utf-8") as f:
-                json.dump(self._store, f, ensure_ascii=False, indent=2)
+            temporary_file = self.storage_file + ".tmp"
+            with open(temporary_file, "w", encoding="utf-8") as f:
+                json.dump(self._store, f, ensure_ascii=False, separators=(",", ":"))
+            os.replace(temporary_file, self.storage_file)
         except Exception as e:
             logger.error(f"Failed to save chat history: {e}")
 
@@ -87,13 +92,28 @@ class DictMemoryStore(BaseMemoryStore):
         self._store[session_id]["messages"].append({"role": role, "content": content})
         self._save()
         
+    def add_exchange(self, session_id: str, user_msg: str, ai_msg: str) -> None:
+        """Append a complete turn and flush it with one atomic disk write."""
+        with self._lock:
+            if session_id not in self._store:
+                self._store[session_id] = {
+                    "messages": [], "last_accessed": "", "last_user_message": "", "topic": "New Session"
+                }
+            now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            session = self._store[session_id]
+            session["last_accessed"] = now
+            session["last_user_message"] = user_msg
+            if not session["messages"]:
+                session["topic"] = user_msg[:30] + ("..." if len(user_msg) > 30 else "")
+            session["messages"].extend([
+                {"role": "user", "content": user_msg},
+                {"role": "assistant", "content": ai_msg},
+            ])
+            self._save()
+
     def get_messages(self, session_id: str, last_n: int) -> list[dict]:
         if session_id not in self._store:
             return []
-            
-        self._store[session_id]["last_accessed"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        self._save()
-        
         history = self._store[session_id]["messages"]
         if last_n <= 0:
             return []
@@ -125,8 +145,11 @@ class ConversationMemory:
             ai_msg: Assistant's response.
             session_id: Session identifier.
         """
-        self.store.add_message(session_id, "user", user_msg)
-        self.store.add_message(session_id, "assistant", ai_msg)
+        if hasattr(self.store, "add_exchange"):
+            self.store.add_exchange(session_id, user_msg, ai_msg)
+        else:
+            self.store.add_message(session_id, "user", user_msg)
+            self.store.add_message(session_id, "assistant", ai_msg)
         logger.debug(f"Added message pair to session {session_id}")
 
     def get_history(self, session_id: str, last_n: int = 5) -> list[dict]:
