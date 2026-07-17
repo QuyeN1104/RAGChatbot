@@ -33,6 +33,17 @@ class ChatResponse(BaseModel):
     session_id: str
     provider: str
     model: str
+    latency_ms: float | None = None
+
+
+class ReadinessResponse(BaseModel):
+    """Startup warmup state and benchmark timings."""
+
+    status: str
+    ready: bool
+    total_ms: float
+    timings_ms: dict[str, float]
+    error: str | None = None
 
 
 class UploadResponse(BaseModel):

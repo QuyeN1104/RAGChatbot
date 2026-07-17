@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     GEMINI_MODEL: str = "gemini-2.5-flash"
     LLM_TIMEOUT_SECONDS: float = 20.0
     LLM_MAX_RETRIES: int = 1
-    CHAT_TIMEOUT_SECONDS: float = 25.0
+    CHAT_TIMEOUT_SECONDS: float = 80.0
 
     # --- Embedding ---
     HF_TOKEN: str = ""
@@ -48,6 +48,15 @@ class Settings(BaseSettings):
     # --- Re-ranker ---
     RERANKER_MODEL: str = "BAAI/bge-reranker-v2-m3"
     RERANKER_TOP_N: int = 3
+
+    # --- Startup & Performance ---
+    STARTUP_WARMUP: bool = True
+    STARTUP_WARMUP_LLM: bool = True
+    STARTUP_FAIL_FAST: bool = True
+    ENABLE_LLM_QUERY_REFORMULATION: bool = False
+    ENABLE_LLM_INTENT_CLASSIFICATION: bool = False
+    SESSION_HISTORY_LIMIT: int = 100
+    MEMORY_HISTORY_PAIRS: int = 5
 
     # --- API Server ---
     API_HOST: str = "0.0.0.0"

@@ -119,7 +119,7 @@ class VectorStoreManager:
     def list_documents(self) -> list[str]:
         """List unique document sources in the vector store."""
         try:
-            results = self.vector_store.get()
+            results = self.vector_store.get(include=["metadatas"])
             if not results or not results.get("metadatas"):
                 return []
             

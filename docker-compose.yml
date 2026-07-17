@@ -15,6 +15,12 @@ services:
       CHROMA_PERSIST_DIR: /app/data/vector_db
     volumes:
       - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import json,urllib.request; data=json.load(urllib.request.urlopen('http://localhost:8000/ready', timeout=3)); raise SystemExit(0 if data.get('ready') else 1)"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 10s
 
   ui:
     build:
@@ -26,5 +32,6 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
