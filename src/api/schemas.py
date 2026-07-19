@@ -37,7 +37,7 @@ class ChatResponse(BaseModel):
 
 
 class ReadinessResponse(BaseModel):
-    """Startup warmup state and benchmark timings."""
+    """API process readiness; model loading is request-driven."""
 
     status: str
     ready: bool

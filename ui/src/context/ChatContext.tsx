@@ -83,8 +83,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             await wait(); continue;
           }
 
-          const [modelData, sessionData, documentData] = await Promise.all([api.models(), api.sessions(), api.documents()]);
-          setModels(modelData.models); setDocuments(documentData.documents);
+          const [modelData, sessionData] = await Promise.all([api.models(), api.sessions()]);
+          setModels(modelData.models);
           const saved = localStorage.getItem(MODEL_KEY);
           setSelectedModelState(modelData.models.find((item) => item.provider + ':' + item.model === saved)
             || modelData.models.find((item) => item.provider === modelData.default_provider && item.model === modelData.default_model)

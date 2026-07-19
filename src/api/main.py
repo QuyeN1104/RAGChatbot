@@ -1,9 +1,7 @@
-"""FastAPI application factory with blocking startup warmup."""
+"""FastAPI application factory with request-driven model loading."""
 
 from __future__ import annotations
 
-import asyncio
-import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
@@ -11,63 +9,21 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.api.dependencies import (
-    get_agent_runtime,
-    get_app_settings,
-    get_llm_client_for,
-    get_memory,
-    get_vector_store,
-)
+from src.api.dependencies import get_app_settings
 from src.api.routes import router
-from src.core.llm_client import default_model_for_provider, get_available_models
 from src.core.logger import get_logger
-from src.core.readiness import mark_failed, mark_ready, record_timing, reset_readiness
+from src.core.readiness import mark_ready, reset_readiness
 
 logger = get_logger(__name__)
 
 
-def _measure(name: str, operation):
-    started = time.perf_counter()
-    result = operation()
-    elapsed = time.perf_counter() - started
-    record_timing(name, elapsed)
-    logger.info("Startup stage %s completed in %.2f ms", name, elapsed * 1000)
-    return result
-
-
-def _warmup_dependencies() -> None:
-    """Load all request-critical resources before the API accepts traffic."""
-    settings = get_app_settings()
-    _measure("memory_load", get_memory)
-
-    vector_store = get_vector_store()
-    _measure("embedding_and_chroma_load", lambda: vector_store.vector_store)
-    _measure("embedding_inference", lambda: vector_store.embedding_service.embed_query("warmup"))
-
-    _measure("model_configuration", get_available_models)
-    provider = settings.DEFAULT_LLM_PROVIDER.strip().lower()
-    model = default_model_for_provider(provider)
-    llm = _measure("default_llm_client", lambda: get_llm_client_for(provider, model))
-    _measure("langgraph_compile", lambda: get_agent_runtime(provider, model))
-
-    if settings.STARTUP_WARMUP_LLM:
-        _measure("default_llm_inference", lambda: llm.invoke("Reply with exactly: OK"))
-
-
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    settings = get_app_settings()
+    # Load configuration only. Request handlers initialize and cache model resources.
+    get_app_settings()
     reset_readiness()
-    try:
-        if settings.STARTUP_WARMUP:
-            await asyncio.to_thread(_warmup_dependencies)
-        mark_ready()
-        logger.info("API readiness warmup completed")
-    except Exception as error:
-        mark_failed(error)
-        logger.exception("API startup warmup failed")
-        if settings.STARTUP_FAIL_FAST:
-            raise
+    mark_ready()
+    logger.info("API ready; model resources will load on first use")
     yield
 
 

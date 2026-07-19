@@ -200,7 +200,7 @@ OPENAI_API_KEY=
 GOOGLE_API_KEY=
 GEMINI_API_KEY=
 OPENAI_MODEL=gpt-5.4-mini
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-flash-latest
 EMBEDDING_MODEL=BAAI/bge-m3
 CHROMA_PERSIST_DIR=./data/vector_db
 CHROMA_COLLECTION=documents
@@ -293,11 +293,11 @@ Sau khi chạy:
 - API dùng network host để kết nối Ollama local.
 - UI chạy tại `http://localhost:3000`.
 - Dữ liệu persistent nằm trong `./data`.
-- Compose chỉ khởi động UI sau khi `/ready` xác nhận embedding, Chroma, memory, model và LangGraph đã warm.
+- Compose khởi động UI sau khi `/ready` xác nhận API có thể nhận request. Model, LangGraph, Chroma và embedding chỉ load khi endpoint đầu tiên cần dùng, sau đó được cache.
 
 ### Readiness và benchmark
 
-Xem chi tiết cold-start theo từng giai đoạn:
+Kiểm tra API process đã sẵn sàng nhận request (không trigger model loading):
 
 ```bash
 curl http://localhost:8000/ready

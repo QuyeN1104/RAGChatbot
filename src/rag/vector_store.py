@@ -116,10 +116,18 @@ class VectorStoreManager:
             logger.error(f"Failed to perform similarity search: {e}")
             raise VectorStoreError(f"Error searching vector store: {e}") from e
 
+    def _metadata_collection(self):
+        """Open Chroma metadata without constructing embedding model."""
+        import chromadb
+
+        self._ensure_persist_directory()
+        client = chromadb.PersistentClient(path=self.settings.CHROMA_PERSIST_DIR)
+        return client.get_or_create_collection(self.settings.CHROMA_COLLECTION)
+
     def list_documents(self) -> list[str]:
         """List unique document sources in the vector store."""
         try:
-            results = self.vector_store.get(include=["metadatas"])
+            results = self._metadata_collection().get(include=["metadatas"])
             if not results or not results.get("metadatas"):
                 return []
             
@@ -135,12 +143,13 @@ class VectorStoreManager:
     def delete_document(self, source_name: str) -> bool:
         """Delete all chunks associated with a specific document source."""
         try:
-            results = self.vector_store.get(where={"source": source_name})
+            collection = self._metadata_collection()
+            results = collection.get(where={"source": source_name})
             ids = results.get("ids", [])
             if not ids:
                 return False
             
-            self.vector_store.delete(ids=ids)
+            collection.delete(ids=ids)
             logger.info(f"Deleted {len(ids)} chunks for document: {source_name}")
             return True
         except Exception as e:
