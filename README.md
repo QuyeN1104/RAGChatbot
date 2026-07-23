@@ -37,14 +37,16 @@
 Dự án được triển khai dựa trên kế hoạch trong [PROJECT_PLAN.md](PROJECT_PLAN.md). Trong quá trình làm, một số lựa chọn đã được cập nhật theo thực tế triển khai, ví dụ frontend hiện dùng **React/Vite** thay vì Streamlit để phù hợp hơn với Vercel và UI dạng web app.
 
 <div align="center">
-  <img src="docs/assets/web-ui.png" alt="Lumen RAG web chat interface" width="100%" />
+  <img src="docs/assets/demo.gif" alt="Lumen RAG web chat interface" width="70%" />
   <br />
   <sub>Web UI thật chạy bằng Docker Compose: chat, model selector, sessions và thư viện tài liệu.</sub>
 </div>
 
 ---
 
-## Demo Thật
+## Demo Thật  
+
+[Full Demo  (Click Here)](https://youtu.be/WKvSAfGx6mM)
 
 Demo được kiểm tra trực tiếp với Docker Compose, FastAPI và Gemini API:
 
