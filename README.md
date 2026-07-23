@@ -61,7 +61,7 @@ Mở `http://localhost:3000`. Frontend render trước; model backend chỉ lazy
 Smoke test đã xác nhận `gemini-flash-latest` trả lời thành công qua `/chat`. Repository chưa khai báo URL demo public; phần này là demo local có thể tái lập, không phải mock UI.
 
 <div align="center">
-  <img src="docs/assets/cli_demo.png" alt="CLI Demo" width="82%" />
+  <img src="docs/assets/cli_demo.png" alt="CLI Demo" width="80%" />
   <br />
   <sub>CLI demo: upload tài liệu, chat theo session và hiển thị nguồn tham chiếu.</sub>
 </div>
