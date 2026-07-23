@@ -16,9 +16,7 @@ class AgentState(TypedDict, total=False):
     query: str
     session_id: str
     top_k: int
-
-    # Router
-    intent: str  # "INTERNAL_DOC" | "GENERAL_CHAT"
+    mode: str  # "general" | "rag"
 
     # RAG
     context: list  # list[Document]

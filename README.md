@@ -18,8 +18,10 @@
 
   <p>
     <a href="#tổng-quan">Tổng quan</a> •
+    <a href="#demo-thật">Demo</a> •
     <a href="#tính-năng">Tính năng</a> •
     <a href="#kiến-trúc">Kiến trúc</a> •
+    <a href="#benchmark-thật">Benchmark</a> •
     <a href="#cài-đặt">Cài đặt</a> •
     <a href="#cicd--deploy">CI/CD</a> •
     <a href="#kiến-thức-đã-học">Kiến thức đã học</a>
@@ -33,6 +35,30 @@
 **Enterprise Agentic RAG Chatbot** là một hệ thống chatbot hỏi đáp tài liệu nội bộ được xây dựng theo hướng gần production. Project kết hợp **Retrieval-Augmented Generation**, **agentic routing**, **conversation memory**, **FastAPI backend**, **React/Vite frontend**, Docker và CI/CD để tạo thành một workflow hoàn chỉnh từ ingest PDF đến deploy.
 
 Dự án được triển khai dựa trên kế hoạch trong [PROJECT_PLAN.md](PROJECT_PLAN.md). Trong quá trình làm, một số lựa chọn đã được cập nhật theo thực tế triển khai, ví dụ frontend hiện dùng **React/Vite** thay vì Streamlit để phù hợp hơn với Vercel và UI dạng web app.
+
+<div align="center">
+  <img src="docs/assets/demo.gif" alt="Lumen RAG web chat interface" width="70%" />
+  <br />
+  <sub>Web UI thật chạy bằng Docker Compose: chat, model selector, sessions và thư viện tài liệu.</sub>
+</div>
+
+---
+
+## Demo Thật  
+
+[Full Demo  (Click Here)](https://youtu.be/WKvSAfGx6mM)
+
+Demo được kiểm tra trực tiếp với Docker Compose, FastAPI và Gemini API:
+
+```bash
+cp .env.example .env
+# Điền GEMINI_API_KEY trong .env
+docker compose up --build
+```
+
+Mở `http://localhost:3000`. Frontend render trước; model backend chỉ lazy-load khi gửi tin nhắn đầu tiên. `/ready`, `/models`, `/sessions` và `/documents` không load LLM hoặc embedding model.
+
+Smoke test đã xác nhận `gemini-flash-latest` trả lời thành công qua `/chat`. Repository chưa khai báo URL demo public; phần này là demo local có thể tái lập, không phải mock UI.
 
 <div align="center">
   <img src="docs/assets/cli_demo.png" alt="CLI Demo" width="82%" />
@@ -50,8 +76,8 @@ Dự án được triển khai dựa trên kế hoạch trong [PROJECT_PLAN.md](
 - **Vector search**: embedding bằng `BAAI/bge-m3`, lưu và truy vấn bằng ChromaDB.
 - **RAG answering**: retrieve context, ghép prompt, sinh câu trả lời bằng Ollama local LLM hoặc cloud model.
 - **Multi-provider LLM**: chọn model từ UI giữa Ollama, Gemini, OpenAI và Groq.
-- **Agentic routing**: phân loại câu hỏi thành `INTERNAL_DOC` hoặc `GENERAL_CHAT`.
-- **LangGraph agent flow**: gom router, retrieval, generation và memory thành graph.
+- **Explicit chat modes**: người dùng chọn `General Chat` hoặc `Document Chat`; không chạy intent classifier.
+- **LangGraph agent flow**: điều phối mode, retrieval, generation và memory thành graph.
 - **Conversation memory**: lưu session, chuyển session, tiếp tục phiên cũ.
 - **Re-ranking**: hỗ trợ `BAAI/bge-reranker-v2-m3` cho two-stage retrieval.
 - **CLI app**: upload/list/delete document, chat, session history.
@@ -60,7 +86,7 @@ Dự án được triển khai dựa trên kế hoạch trong [PROJECT_PLAN.md](
 - **Docker support**: `Dockerfile.api`, `Dockerfile.ui`, `docker-compose.yml`.
 - **CI/CD**: GitHub Actions test/build, Render backend deploy, Vercel frontend deploy.
 - **QA dataset generation**: script sinh QA và rewrite văn phong trong `scripts/generate_qa.py`.
-- **Automated tests**: pytest cho RAG components và agent router.
+- **Automated tests**: pytest cho RAG components, explicit graph modes và lazy loading.
 
 ### Đang Mở Rộng
 
@@ -104,7 +130,7 @@ Dự án được triển khai dựa trên kế hoạch trong [PROJECT_PLAN.md](
                                ▼
 ┌─────────────────────────────────────────────────────────┐
 │ LangGraph Agent                                         │
-│  Router -> RAG or General Chat -> Memory -> Response    │
+│  Explicit mode -> RAG or General Chat -> Memory        │
 └──────────────────────────────┬──────────────────────────┘
                                ▼
 ┌─────────────────────────────────────────────────────────┐
@@ -136,7 +162,7 @@ Dự án được triển khai dựa trên kế hoạch trong [PROJECT_PLAN.md](
 ├── src/
 │   ├── core/              # Config, logger, exceptions, LLM client
 │   ├── rag/               # PDF loading, embedding, vector store, retriever, reranker
-│   ├── agent/             # State, router, LangGraph graph, memory, tools
+│   ├── agent/             # State, LangGraph graph, memory, tools
 │   └── api/               # FastAPI app, routes, schemas, dependencies
 ├── ui/
 │   ├── src/               # React app
@@ -200,7 +226,7 @@ OPENAI_API_KEY=
 GOOGLE_API_KEY=
 GEMINI_API_KEY=
 OPENAI_MODEL=gpt-5.4-mini
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-flash-latest
 EMBEDDING_MODEL=BAAI/bge-m3
 CHROMA_PERSIST_DIR=./data/vector_db
 CHROMA_COLLECTION=documents
@@ -265,7 +291,7 @@ Ví dụ:
 ```bash
 curl -X POST http://localhost:8000/chat \
   -H "Content-Type: application/json" \
-  -d '{"message":"Tài liệu này nói về gì?","session_id":"demo","top_k":5}'
+  -d '{"message":"Tài liệu này nói về gì?","session_id":"demo","mode":"rag","top_k":5}'
 ```
 
 ### Frontend React/Vite
@@ -293,11 +319,11 @@ Sau khi chạy:
 - API dùng network host để kết nối Ollama local.
 - UI chạy tại `http://localhost:3000`.
 - Dữ liệu persistent nằm trong `./data`.
-- Compose chỉ khởi động UI sau khi `/ready` xác nhận embedding, Chroma, memory, model và LangGraph đã warm.
+- Compose khởi động UI sau khi `/ready` xác nhận API có thể nhận request. Model, LangGraph, Chroma và embedding chỉ load khi endpoint đầu tiên cần dùng, sau đó được cache.
 
-### Readiness và benchmark
+### Readiness
 
-Xem chi tiết cold-start theo từng giai đoạn:
+Kiểm tra API process đã sẵn sàng nhận request (không trigger model loading):
 
 ```bash
 curl http://localhost:8000/ready
@@ -306,17 +332,31 @@ curl http://localhost:8000/ready
 Chạy benchmark startup, danh sách session và chat latency (min/mean/p50/p95/max):
 
 ```bash
-python scripts/benchmark_api.py --requests 10 --warmup 1 --concurrency 1
+python scripts/benchmark_api.py --requests 10 --warmup 1 --concurrency 1 --mode general
 
 # Concurrent load + regression gates
-python scripts/benchmark_api.py --requests 20 --concurrency 4 --max-p95-ms 30000 --max-error-rate 0
+python scripts/benchmark_api.py --requests 20 --concurrency 4 --mode general --max-p95-ms 30000 --max-error-rate 0
 ```
 
-Các mặc định hiệu năng trong `.env.example` tắt hai lượt LLM phụ cho reformulation và intent classification. Bật lại nếu cần chất lượng hội thoại follow-up cao hơn:
+## Benchmark Thật
+
+Đo lại ngày **2026-07-20** sau khi bỏ intent router. API dùng provider `gemini`, model `gemini-flash-latest`, explicit `mode=general`, `top_k=5`, prompt `Hello`. General mode được regression test để không gọi retrieval hoặc gửi tài liệu local ra provider.
+
+### Core explicit-mode benchmark
+
+Compiled LangGraph cache, fake LLM, 1.000 sequential invocations trên máy local. Profile này cô lập overhead graph/mode dispatch khỏi network và provider:
+
+| Requests | p50 | p95 | Throughput | Error rate | Retrieval calls |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 1,000 | 2.051 ms | 2.394 ms | 479.42 req/s | 0% | 0 |
+
+
+Không có p50/p95 hợp lệ cho live run vì không request nào thành công. Đây là provider quota failure, không phải routing failure. Không chạy concurrent test tiếp để tránh spam API. Chạy lại ba profile cold, warm c=1 và warm c=4 sau khi quota reset hoặc bằng production key; chỉ đặt regression gate sau khi có baseline ổn định.
+
+Mặc định hiệu năng trong `.env.example` tắt lượt LLM phụ cho query reformulation. Mode do client chọn trực tiếp nên không còn intent-classification call. Bật lại nếu cần chất lượng hội thoại follow-up cao hơn:
 
 ```env
 ENABLE_LLM_QUERY_REFORMULATION=true
-ENABLE_LLM_INTENT_CLASSIFICATION=true
 ```
 
 ---
@@ -335,7 +375,7 @@ Chạy từng nhóm test:
 pytest tests/test_rag/test_document.py
 pytest tests/test_rag/test_embedding.py
 pytest tests/test_rag/test_retriever.py
-pytest tests/test_agent/test_router.py
+pytest tests/test_agent/test_graph_modes.py
 ```
 
 ---

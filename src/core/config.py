@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     DEFAULT_LLM_PROVIDER: str = "ollama"
     GROQ_MODEL: str = "llama-3.1-70b-versatile"
     OPENAI_MODEL: str = "gpt-5.4-mini"
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_MODEL: str = "gemini-flash-latest"
     LLM_TIMEOUT_SECONDS: float = 20.0
     LLM_MAX_RETRIES: int = 1
     CHAT_TIMEOUT_SECONDS: float = 80.0
@@ -50,11 +50,7 @@ class Settings(BaseSettings):
     RERANKER_TOP_N: int = 3
 
     # --- Startup & Performance ---
-    STARTUP_WARMUP: bool = True
-    STARTUP_WARMUP_LLM: bool = True
-    STARTUP_FAIL_FAST: bool = True
     ENABLE_LLM_QUERY_REFORMULATION: bool = False
-    ENABLE_LLM_INTENT_CLASSIFICATION: bool = False
     SESSION_HISTORY_LIMIT: int = 100
     MEMORY_HISTORY_PAIRS: int = 5
 

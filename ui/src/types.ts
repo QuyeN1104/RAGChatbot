@@ -5,4 +5,5 @@ export interface Source { source: string; page?: number | string | null; }
 export interface Message { id: string; role: Role; content: string; createdAt: string; attachments?: Attachment[]; sources?: Source[]; latencyMs?: number; }
 export interface Conversation { id: string; title: string; group: ConversationGroup; messages: Message[]; updatedAt: string; }
 export interface ModelChoice { provider: string; model: string; label: string; }
+export type ChatMode = 'general' | 'rag';
 export type Theme = 'light' | 'dark';

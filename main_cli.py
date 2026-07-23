@@ -23,8 +23,6 @@ from src.core.logger import get_logger, setup_root_logger
 from src.core.llm_client import create_llm_client
 from src.rag.document import load_pdf, chunk_documents
 from src.rag.vector_store import VectorStoreManager
-from src.rag.retriever import retrieve_context, generate_answer
-from src.agent.router import classify_intent, execute_route
 from src.agent.memory import get_memory
 from src.agent.graph import create_agent_graph
 
@@ -53,7 +51,7 @@ def main():
         logging.getLogger(name).setLevel(logging.CRITICAL)
 
     console.print(Panel.fit("[bold blue]🤖 Agentic RAG Chatbot[/bold blue]", border_style="blue"))
-    console.print("[dim]Initializing system... (Loading embedding model may take a few seconds)[/dim]")
+    console.print("[dim]Initializing system...[/dim]")
     
     settings = get_settings()
     
@@ -74,6 +72,7 @@ def main():
         console.print(f"[dim]System: Started new session [cyan]{session_id}[/cyan][/dim]")
     
     console.print(Panel("[bold]Commands:[/bold]\n"
+                        "/mode <general|rag> — Select chat mode\n"
                         "/upload <path>     — Upload PDF\n"
                         "/docs              — List uploaded documents\n"
                         "/delete_doc <name> — Delete document by name\n"
@@ -85,6 +84,8 @@ def main():
                         title="Help", border_style="green"))
 
     
+    chat_mode = "general"
+
     while True:
         try:
             try:
@@ -102,6 +103,15 @@ def main():
                 console.print("[dim]Goodbye![/dim]")
                 break
                 
+            elif user_input.lower().startswith("/mode"):
+                parts = user_input.lower().split()
+                if len(parts) != 2 or parts[1] not in {"general", "rag"}:
+                    console.print("[red]System: Use /mode general or /mode rag[/red]")
+                else:
+                    chat_mode = parts[1]
+                    console.print(f"[green]System: Chat mode set to {chat_mode}.[/green]")
+                continue
+
             elif user_input.lower() == "/clear":
                 memory.store.clear_session(session_id)
                 console.print("[dim italic]System: Chat history cleared.[/dim italic]")
@@ -196,7 +206,8 @@ def main():
             # Chat flow with LangGraph
             state = {
                 "query": user_input,
-                "session_id": session_id
+                "session_id": session_id,
+                "mode": chat_mode
             }
             
             with console.status("[bold blue]Assistant is thinking...[/bold blue]"):
@@ -204,12 +215,11 @@ def main():
             
             ai_message = result.get("answer", "")
             sources = result.get("sources", [])
-            intent = result.get("intent", "GENERAL_CHAT")
             
             # Display answer
             console.print(Panel(Markdown(ai_message), title="[bold blue]Assistant[/bold blue]", border_style="blue", title_align="left"))
             
-            if sources and intent == "INTERNAL_DOC":
+            if sources and chat_mode == "rag":
                 sources_text = ""
                 for i, src in enumerate(sources):
                     sources_text += f"[{i+1}] **{src.get('source')}** (Page {src.get('page')})\n"

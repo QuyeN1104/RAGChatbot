@@ -46,17 +46,6 @@ logger = get_logger(__name__)
 router = APIRouter()
 
 
-def _is_smoke_test_message(message: str) -> bool:
-    normalized = message.strip().lower()
-    greeting_terms = ("xin chao", "xin chào", "hello", "hi", "chao", "chào")
-    api_terms = ("api", "backend", "server")
-    health_terms = ("hoat dong", "hoạt động", "running", "work", "healthy")
-    return (
-        any(term in normalized for term in greeting_terms)
-        and any(term in normalized for term in api_terms)
-        and any(term in normalized for term in health_terms)
-    )
-
 
 def _format_sources(documents: list) -> list[Source]:
     """Extract stable source metadata from retrieved documents."""
@@ -84,7 +73,7 @@ async def health_check() -> HealthResponse:
 
 @router.get("/ready", response_model=ReadinessResponse)
 async def readiness_check() -> ReadinessResponse:
-    """Return warmup readiness plus per-stage startup timings."""
+    """Report whether the API can accept requests; models load on first use."""
     return ReadinessResponse(**readiness_snapshot())
 
 
@@ -212,23 +201,13 @@ async def chat(
         provider = (request.provider or settings.DEFAULT_LLM_PROVIDER).strip().lower()
         model = (request.model or default_model_for_provider(provider)).strip()
 
-        if _is_smoke_test_message(message):
-            return ChatResponse(
-                answer="API is running. The chat endpoint is reachable.",
-                sources=[],
-                session_id=session_id,
-                provider=provider,
-                model=model,
-                latency_ms=round((time.perf_counter() - request_started) * 1000, 2),
-            )
-
         def run_chat_graph() -> dict:
             if request.api_key:
                 llm = create_llm_client(provider, model, request.api_key)
                 app = create_agent_graph(llm=llm, vector_store=vector_store, memory=memory)
             else:
                 app = get_agent_runtime(provider, model)
-            return app.invoke({"query": message, "session_id": session_id, "top_k": request.top_k or settings.TOP_K})
+            return app.invoke({"query": message, "session_id": session_id, "top_k": request.top_k or settings.TOP_K, "mode": request.mode})
 
         result = await asyncio.wait_for(
             asyncio.to_thread(run_chat_graph),

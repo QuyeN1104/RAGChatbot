@@ -37,6 +37,6 @@ export const api = {
     const form = new FormData(); form.append('file', file);
     return request<{ filename: string; pages: number; chunks: number; message: string }>('/upload', { method: 'POST', body: form });
   },
-  chat: (body: { message: string; session_id: string; provider: string; model: string; top_k?: number }, signal: AbortSignal) =>
+  chat: (body: { message: string; session_id: string; provider: string; model: string; mode: 'general' | 'rag'; top_k?: number }, signal: AbortSignal) =>
     request<ChatResult>('/chat', { method: 'POST', signal, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }),
 };

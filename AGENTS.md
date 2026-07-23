@@ -31,3 +31,18 @@ python scripts/benchmark_api.py --requests 20 --concurrency 4
 ```
 
 Use `--max-p95-ms` and `--max-error-rate` only after recording a stable machine-specific baseline.
+
+
+## Gemini API Development
+
+- Read Gemini credentials from `GEMINI_API_KEY`; `GOOGLE_API_KEY` is supported only as a compatibility fallback. Never hardcode, log, commit, or place keys in URLs.
+- If a key appears in code or logs (commonly `AIza...`), stop and tell the user to revoke it in Google AI Studio before continuing.
+- Use provider `gemini` and a model from `GEMINI_MODEL` (default: `gemini-flash-latest`). User-supplied `api_key` values are request-scoped and must never enter a shared cache.
+- For a configured server key, use the cached runtime in `src/api/dependencies.py`; do not call `create_llm_client` directly from a normal request path.
+- Keep model resources lazy: API startup and readiness probes must not construct clients, compile LangGraph, load Chroma, load embeddings, or invoke a model. The first real chat/RAG request pays cold-start cost; later requests reuse cached resources.
+- Cold initialization must be concurrency-safe so simultaneous first requests do not create duplicate clients or graphs.
+- Test Gemini directly with a header, never a query parameter:
+
+```bash
+curl https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent -H "Content-Type: application/json" -H "X-goog-api-key: $GEMINI_API_KEY" -X POST -d '{"contents":[{"parts":[{"text":"Hello"}]}]}'
+```
