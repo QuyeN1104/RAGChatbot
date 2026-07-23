@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { api } from '../api';
-import type { Attachment, Conversation, Message, ModelChoice, Theme } from '../types';
+import type { Attachment, ChatMode, Conversation, Message, ModelChoice, Theme } from '../types';
 import { id } from '../utils';
 
 const THEME_KEY = 'lumen-chat.theme.v1';
@@ -17,6 +17,7 @@ interface ChatState {
   isGenerating: boolean; isLoadingSession: boolean; isUploading: boolean;
   theme: Theme; toggleTheme: () => void; sidebarCollapsed: boolean; setSidebarCollapsed: (value: boolean) => void;
   drawerOpen: boolean; setDrawerOpen: (value: boolean) => void;
+  chatMode: ChatMode; setChatMode: (value: ChatMode) => void;
   models: ModelChoice[]; selectedModel: ModelChoice | null; setSelectedModel: (value: ModelChoice) => void;
   documents: string[]; refreshDocuments: () => Promise<void>; deleteDocument: (name: string) => Promise<void>;
   apiStatus: ApiStatus; startupTimings: Record<string, number>; notice: Notice; clearNotice: () => void;
@@ -53,6 +54,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem(THEME_KEY) as Theme) || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [chatMode, setChatMode] = useState<ChatMode>('general');
   const [models, setModels] = useState<ModelChoice[]>([]);
   const [selectedModel, setSelectedModelState] = useState<ModelChoice | null>(null);
   const [documents, setDocuments] = useState<string[]>([]);
@@ -183,7 +185,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         for (const attachment of sentAttachments) if (attachment.file) await api.upload(attachment.file);
         await refreshDocuments(); setIsUploading(false);
       }
-      const result = await api.chat({ message: user.content, session_id: conversationId, provider: selectedModel.provider, model: selectedModel.model, top_k: 5 }, abortRef.current.signal);
+      const result = await api.chat({ message: user.content, session_id: conversationId, provider: selectedModel.provider, model: selectedModel.model, mode: chatMode, top_k: 5 }, abortRef.current.signal);
       const assistant: Message = { id: id(), role: 'assistant', content: result.answer, sources: result.sources, latencyMs: result.latency_ms, createdAt: new Date().toISOString() };
       update(conversationId, (item) => ({ ...item, messages: [...item.messages, assistant], updatedAt: new Date().toISOString() }));
       setApiStatus('online'); await refreshSessions(conversationId);
@@ -202,10 +204,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const value: ChatState = {
     conversations, active, activeId, input, setInput, attachments,
-    addAttachments: (items) => setAttachments((current) => [...current, ...items]),
+    addAttachments: (items) => { setAttachments((current) => [...current, ...items]); setChatMode('rag'); },
     removeAttachment: (attachmentId) => setAttachments((items) => items.filter((item) => item.id !== attachmentId)),
     isGenerating, isLoadingSession, isUploading, theme, toggleTheme: () => setTheme((value) => value === 'light' ? 'dark' : 'light'),
-    sidebarCollapsed, setSidebarCollapsed, drawerOpen, setDrawerOpen, models, selectedModel, setSelectedModel,
+    sidebarCollapsed, setSidebarCollapsed, drawerOpen, setDrawerOpen, chatMode, setChatMode, models, selectedModel, setSelectedModel,
     documents, refreshDocuments, deleteDocument, apiStatus, startupTimings, notice, clearNotice: () => setNotice(null),
     newChat, selectConversation, renameConversation, deleteConversation, sendMessage, stopGenerating, editMessage, regenerate,
   };

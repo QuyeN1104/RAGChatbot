@@ -51,7 +51,6 @@ class Settings(BaseSettings):
 
     # --- Startup & Performance ---
     ENABLE_LLM_QUERY_REFORMULATION: bool = False
-    ENABLE_LLM_INTENT_CLASSIFICATION: bool = False
     SESSION_HISTORY_LIMIT: int = 100
     MEMORY_HISTORY_PAIRS: int = 5
 

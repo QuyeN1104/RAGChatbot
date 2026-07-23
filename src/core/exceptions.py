@@ -57,13 +57,4 @@ class RetrievalError(RAGException):
 
     def __init__(self, message: str = "Retrieval error"):
         super().__init__(message)
-
-
-# --- Layer 3: Agent ---
-
-class RoutingError(RAGException):
-    """Raised when intent classification or routing fails."""
-
-    def __init__(self, message: str = "Routing error"):
-        super().__init__(message)
  

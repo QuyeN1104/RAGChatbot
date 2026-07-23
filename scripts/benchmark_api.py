@@ -53,7 +53,9 @@ def main() -> None:
     parser.add_argument("--concurrency", type=int, default=1)
     parser.add_argument("--max-p95-ms", type=float)
     parser.add_argument("--max-error-rate", type=float, default=0.0)
-    parser.add_argument("--query", default="Tóm tắt nội dung chính trong tài liệu.")
+    parser.add_argument("--query", default="Hello")
+    parser.add_argument("--mode", choices=("general", "rag"), default="general")
+    parser.add_argument("--top-k", type=int, default=5)
     args = parser.parse_args()
     base = args.base_url.rstrip("/")
 
@@ -75,6 +77,8 @@ def main() -> None:
             "session_id": "benchmark-" + str(uuid.uuid4()),
             "provider": default_provider,
             "model": default_model,
+            "mode": args.mode,
+            "top_k": args.top_k,
         }
         response, wall_ms = request_json(base + "/chat", method="POST", payload=payload)
         return wall_ms, float(response.get("latency_ms") or wall_ms)
@@ -117,6 +121,8 @@ def main() -> None:
         "concurrency": args.concurrency,
         "provider": default_provider,
         "model": default_model,
+        "mode": args.mode,
+        "top_k": args.top_k,
     }
     failures = []
     if args.max_p95_ms is not None and report["chat_wall"]["p95_ms"] > args.max_p95_ms:

@@ -69,6 +69,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .sidebar-trigger { display: none; }
 .model-button, .nav-text-button { min-height: 42px; display: flex; align-items: center; gap: 6px; padding: 0 11px; border: 0; border-radius: 12px; background: transparent; font-weight: 600; }
 .model-button:hover, .nav-text-button:hover { background: var(--surface-2); }
+.mode-selector { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.mode-selector button { min-height: 32px; display: inline-flex; align-items: center; gap: 5px; padding: 0 9px; border: 0; border-radius: 8px; color: var(--muted); background: transparent; font-size: 12px; font-weight: 600; }
+.mode-selector button:hover { color: var(--text); background: var(--surface-2); }
+.mode-selector button.is-active { color: var(--brand); background: var(--brand-soft); }
+.mode-selector button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .nav-text-button { font-size: 14px; font-weight: 500; }
 .popover-wrap { position: relative; }
 .model-menu { top: 48px; left: 0; width: 290px; }
@@ -151,7 +156,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 @media (max-width: 640px) {
   .chat-workspace { grid-template-rows: 56px minmax(0, 1fr) auto; }
   .top-navbar { padding: 0 8px; }.nav-text-button span { display: none; }.nav-text-button { width: 44px; padding: 0; justify-content: center; }
-  .model-button { max-width: 154px; padding: 0 7px; }.model-button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .model-button { max-width: 136px; padding: 0 7px; }.model-button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.mode-selector button { width: 34px; padding: 0; justify-content: center; }.mode-selector button span { display: none; }
   .welcome-screen { width: calc(100% - 28px); gap: 20px; padding-bottom: 24px; }.welcome-screen .brand-mark { width: 42px; height: 42px; }.welcome-copy { font-size: 14px; }
   .suggestion-grid { grid-template-columns: 1fr; gap: 8px; }.suggestion-card { min-height: 68px; padding: 13px 14px; }.suggestion-card small { display: none; }
   .message-list { width: calc(100% - 24px); padding-top: 18px; }.user-message-wrap { margin-left: 30px; }.user-message { max-width: 90%; padding: 10px 14px; }

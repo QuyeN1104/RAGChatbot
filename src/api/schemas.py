@@ -4,6 +4,8 @@ API Schemas - Pydantic request/response models.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -20,6 +22,7 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, description="User message")
     session_id: str | None = Field(default=None, description="Conversation session ID")
     top_k: int | None = Field(default=None, ge=1, le=20, description="Number of chunks to retrieve")
+    mode: Literal["general", "rag"] = Field(default="general", description="Explicit chat mode")
     provider: str | None = Field(default=None, description="LLM provider: ollama, groq, openai, gemini")
     model: str | None = Field(default=None, description="Provider-specific model name")
     api_key: str | None = Field(default=None, description="Provider API key for this request only")

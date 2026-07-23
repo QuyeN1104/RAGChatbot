@@ -207,7 +207,7 @@ async def chat(
                 app = create_agent_graph(llm=llm, vector_store=vector_store, memory=memory)
             else:
                 app = get_agent_runtime(provider, model)
-            return app.invoke({"query": message, "session_id": session_id, "top_k": request.top_k or settings.TOP_K})
+            return app.invoke({"query": message, "session_id": session_id, "top_k": request.top_k or settings.TOP_K, "mode": request.mode})
 
         result = await asyncio.wait_for(
             asyncio.to_thread(run_chat_graph),

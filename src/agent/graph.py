@@ -2,7 +2,7 @@
 Agent Graph — LangGraph orchestration for the RAG Chatbot.
 
 This module defines the state machine (nodes and edges) for the chatbot,
-connecting memory, intent classification, retrieval, and generation.
+connecting explicit chat modes, memory, retrieval, and generation.
 """
 
 from __future__ import annotations
@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING
 from langgraph.graph import END, StateGraph
 
 from src.agent.state import AgentState
-from src.agent.router import classify_intent, classify_intent_fast
 from src.rag.retriever import retrieve_context, generate_answer
 from src.core.config import get_settings
 from src.core.logger import get_logger
@@ -65,17 +64,6 @@ def create_agent_graph(
             "reformulated_query": standalone_query,
             "history": history
         }
-
-    def classify_node(state: AgentState) -> dict:
-        """Node: Classifies the intent of the reformulated query."""
-        logger.info("--- NODE: Classify Intent ---")
-        query = state.get("reformulated_query", state["query"])
-        intent = (
-            classify_intent(query, llm)
-            if settings.ENABLE_LLM_INTENT_CLASSIFICATION
-            else classify_intent_fast(query)
-        )
-        return {"intent": intent}
 
     def retrieve_node(state: AgentState) -> dict:
         """Node: Retrieves context from the vector store for RAG."""
@@ -136,16 +124,9 @@ def create_agent_graph(
         memory.add(query, answer, session_id)
         return {}
 
-    # ==========================
-    # CONDITIONAL EDGES
-    # ==========================
-
-    def route_intent(state: AgentState) -> str:
-        """Route to RAG or General Chat based on intent."""
-        intent = state.get("intent", "GENERAL_CHAT")
-        if intent == "INTERNAL_DOC":
-            return "retrieve"
-        return "general_chat"
+    # Route from explicit request mode; no intent classifier on the hot path.
+    def route_mode(state: AgentState) -> str:
+        return "retrieve" if state.get("mode") == "rag" else "general_chat"
 
     # ==========================
     # GRAPH ASSEMBLY
@@ -155,7 +136,6 @@ def create_agent_graph(
 
     # Add Nodes
     workflow.add_node("reformulate", reformulate_node)
-    workflow.add_node("classify", classify_node)
     workflow.add_node("retrieve", retrieve_node)
     workflow.add_node("generate_rag", generate_rag_node)
     workflow.add_node("general_chat", general_chat_node)
@@ -165,11 +145,9 @@ def create_agent_graph(
     workflow.set_entry_point("reformulate")
 
     # Add Edges
-    workflow.add_edge("reformulate", "classify")
-    
     workflow.add_conditional_edges(
-        "classify",
-        route_intent,
+        "reformulate",
+        route_mode,
         {
             "retrieve": "retrieve",
             "general_chat": "general_chat"
